@@ -50,7 +50,7 @@ namespace CallAugger.Controllers.DataImporters
 
                     // move the file into the archive folder
                     var archivePath = path + @"\Data\Pharmacy Info\Archive";
-                    //File.Move(fullFilePath, archivePath + fileName);
+                    File.Move(fullFilePath, archivePath + fileName);
                 }
                 else
                 {
