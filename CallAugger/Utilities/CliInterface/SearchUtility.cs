@@ -24,7 +24,8 @@ namespace CallAugger.Utilities
                     pharmacy.City.ToLower().Contains(input.ToLower()) ||
                     pharmacy.State.ToLower().Contains(input.ToLower()) ||
                     pharmacy.Zip.ToLower().Contains(input.ToLower()) ||
-                    pharmacy.ContactName.ToLower().Contains(input.ToLower()) ||
+                    pharmacy.ContactName1.ToLower().Contains(input.ToLower()) ||
+                    pharmacy.ContactName2.ToLower().Contains(input.ToLower()) ||
                     pharmacy.PrimaryPhoneNumber.ToLower().Contains(input.ToLower())
                 ).ToList();
         }

@@ -51,7 +51,7 @@ namespace CallAugger.Utilities
             Console.WriteLine( @"\ \ \____\ \  __ \\ \ \____\ \ \____    \ \  __ \\ \ \_\ \\ \ \__ \\ \ \__ \\ \  __\ \ \  __<   " );
             Console.WriteLine( @" \ \_____\\ \_\ \_\\ \_____\\ \_____\    \ \_\ \_\\ \_____\\ \_____\\ \_____\\ \_____\\ \_\ \_\ " );
             Console.WriteLine( @"  \/_____/ \/_/\/_/ \/_____/ \/_____/     \/_/\/_/ \/_____/ \/_____/ \/_____/ \/_____/ \/_/ /_/ " );
-            Console.WriteLine( "                                                      Built for BestRx     By Fultzy     V 0.4 \n" );
+            Console.WriteLine( "                                                      Built for BestRx     By Fultzy     V 0.7 \n" );
 
         }
         

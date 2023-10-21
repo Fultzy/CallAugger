@@ -7,7 +7,7 @@ namespace CallAugger
     public class Pharmacy
     {
 
-        //public int ID { get; set; }
+        public int id { get; set; }
         public string Name { get; set; }
         public string Npi { get; set; }
         public string Dea { get; set; }
@@ -16,7 +16,8 @@ namespace CallAugger
         public string City { get; set; }
         public string State { get; set; }
         public string Zip { get; set; }
-        public string ContactName { get; set; }
+        public string ContactName1 { get; set; }
+        public string ContactName2 { get; set; }
         public string PrimaryPhoneNumber { get; set; }
 
         // The Frist phone number in this is should always be the primary phone number. 
@@ -32,27 +33,27 @@ namespace CallAugger
         // if true is passed to this method, it will also write out the stats for each phone number
         public void WritePharmacyInfo(int callRecordCount = 0)
         {
-            string pad = "   ";
+            string pad = "     ";
 
 
             // write out all the info for the pharmacy to the console
-            Console.WriteLine(pad + "    ~~~~~~~~~~ " + Name + " ~~~~~~~~~~\n");
+            Console.WriteLine(pad + "  ~~~~~~~~~~ " + Name + " ~~~~~~~~~~\n");
                                    
             // write Pharmacy Medical Creds
-            Console.WriteLine(pad + "          Npi        Ncpdp        Dea");
-            Console.WriteLine(pad + "      " + Npi + " || " + Ncpdp + " || " + Dea);
-            Console.WriteLine(pad + "      {0} {1}, {2} {3}\n", Address,  City, State, Zip);
+            Console.WriteLine(pad + "        Npi        Ncpdp        Dea");
+            Console.WriteLine(pad + "    " + Npi + " || " + Ncpdp + " || " + Dea);
+            Console.WriteLine(pad + "    {0} {1}, {2} {3}\n", Address,  City, State, Zip);
 
             // write Pharmacy Contact Info
-            Console.WriteLine(pad + "       Contact: {0}", ContactName);
-            Console.WriteLine(pad + "    Main Phone: {0}\n", PrimaryPhoneNumber); // Install Null for missing
+            Console.WriteLine(pad + "  Contact(s): {0} {1}", ContactName1, ContactName2);
+            Console.WriteLine(pad + "  Main Phone: {0}\n", PrimaryPhoneNumber); // Install Null for missing
 
             if (PhoneNumbers.Count > 1)
             {
                 // write phrmacy Total call states
-                Console.WriteLine(pad + "     Total Calls : " + TotalCalls  +   "     Total Duration : " + FormatedDuration(TotalDuration));
-                Console.WriteLine(pad + "   Inbound Calls : " + InboundCalls  + "   Inbound Duration : " + FormatedDuration(InboundDuration));
-                Console.WriteLine(pad + "  Outbound Calls : " + OutboundCalls + "  Outbound Duration : " + FormatedDuration(OutboundDuration));
+                Console.WriteLine(pad + "   Total Calls : " + TotalCalls  +   "     Total Duration : " + FormatedDuration(TotalDuration));
+                Console.WriteLine(pad + " Inbound Calls : " + InboundCalls  + "   Inbound Duration : " + FormatedDuration(InboundDuration));
+                Console.WriteLine(pad + "Outbound Calls : " + OutboundCalls + "  Outbound Duration : " + FormatedDuration(OutboundDuration));
             }
 
 
@@ -74,26 +75,33 @@ namespace CallAugger
 
         public void AddPhoneNumber(PhoneNumber newPhoneNumber)
         {
-            // add caller stats to pharmacy over-all stats
-            TotalCalls       += newPhoneNumber.TotalCalls; 
-            TotalDuration    += newPhoneNumber.TotalDuration;
-            InboundCalls     += newPhoneNumber.InboundCalls;
-            OutboundCalls    += newPhoneNumber.OutboundCalls;
-            InboundDuration  += newPhoneNumber.InboundDuration;
-            OutboundDuration += newPhoneNumber.OutboundDuration;
-
-
             // if the phone number already exists in the list replace it with the new phone number
-            if (PhoneNumbers.Contains(newPhoneNumber))
+            var foundPhoneNumber = PhoneNumbers.Find(pn => pn.Number == newPhoneNumber.Number);
+            
+            if (foundPhoneNumber != null)
             {
-                int recordIndex = PhoneNumbers.FindIndex(pharmaPN => pharmaPN.Number == newPhoneNumber.Number);
-                //if (recordIndex >= 0) PhoneNumbers[recordIndex] = newPhoneNumber;
+                
             }
             else // add the new phone number to the list of phone numbers
             {
+                // add caller stats to pharmacy over-all stats
+                TotalCalls += newPhoneNumber.TotalCalls;
+                TotalDuration += newPhoneNumber.TotalDuration;
+                InboundCalls += newPhoneNumber.InboundCalls;
+                OutboundCalls += newPhoneNumber.OutboundCalls;
+                InboundDuration += newPhoneNumber.InboundDuration;
+                OutboundDuration += newPhoneNumber.OutboundDuration;
+
                 PhoneNumbers.Add(newPhoneNumber);
             }
-        
+        }
+
+        public void AddPhoneNumbers(List<PhoneNumber> phoneNumbers)
+        {
+            foreach (PhoneNumber phoneNumber in phoneNumbers)
+            {
+                AddPhoneNumber(phoneNumber);
+            }
         }
 
         public void RemovePhoneNumber(string phoneNumber)

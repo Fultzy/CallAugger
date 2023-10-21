@@ -7,10 +7,10 @@ namespace CallAugger
 {
     public class PhoneNumber
     {
-        //public int ID { get; set; }
-        public string Number { get; set; }
+        public int id { get; set; }
+        public int PharmacyID { get; set; }
 
-        public List<CallRecord> CallRecords = new List<CallRecord>();
+        public string Number { get; set; }
         
         public int TotalCalls = 0;
         public int InboundCalls = 0;
@@ -19,6 +19,7 @@ namespace CallAugger
         public int InboundDuration = 0;
         public int OutboundDuration = 0;
 
+        public List<CallRecord> CallRecords = new List<CallRecord>();
 
         public void AddCall(CallRecord newCall)
         {
@@ -55,7 +56,6 @@ namespace CallAugger
         public string FormatedPhoneNumber()
         {
             string formattedNumber = Number;
-
             if (Number.Length == 10)
             {
                 formattedNumber = "(" + Number.Substring(0, 3) + ") " + Number.Substring(3, 3) + "-" + Number.Substring(6, 4);
@@ -86,26 +86,24 @@ namespace CallAugger
 
         public void WriteCallerStats(int topCallCount = 0)
         {
-            var pad = "   ";
+            var pad = "       ";
+            Console.WriteLine(pad + $"\n    ~~~~~~~~~ " + FormatedPhoneNumber() + " ~~~~~~~~~~\n");
 
-            Console.WriteLine(pad + $"\n        ~~~~~~~~~ " + FormatedPhoneNumber() + " ~~~~~~~~~~\n");
-
-            Console.WriteLine(pad + "         All Calls : {0}  -  {1}", TotalCalls, FormatedDuration(TotalDuration));
-            Console.WriteLine(pad + "     Inbound Calls : {0}  -  {1}", InboundCalls, FormatedDuration(InboundDuration));
-            Console.WriteLine(pad + "    Outbound Calls : {0}  -  {1}\n", OutboundCalls, FormatedDuration(OutboundDuration));
+            Console.WriteLine(pad + "     All Calls : {0}  -  {1}", TotalCalls, FormatedDuration(TotalDuration));
+            Console.WriteLine(pad + " Inbound Calls : {0}  -  {1}", InboundCalls, FormatedDuration(InboundDuration));
+            Console.WriteLine(pad + "Outbound Calls : {0}  -  {1}\n", OutboundCalls, FormatedDuration(OutboundDuration));
 
 
             if (topCallCount > 0)
             {
-                //Console.WriteLine("\n     ~~~~~~~~~~~~ Top Calls ~~~~~~~~~~~~~");
-                Console.WriteLine(pad + "              DateTime         Duration        Rep");
-
+                Console.WriteLine(pad + $"Top {topCallCount} calls:");
 
                 int callCount = 0;
                 foreach (CallRecord call in CallRecords.OrderByDescending(pn => pn.Duration))
                 {
+                    
                     callCount++;
-                    Console.WriteLine(pad + "    {0}: {1}  -  {2}  -  {3}", callCount, call.Time, FormatedDuration(call.Duration), call.UserName);
+                    Console.WriteLine("   {0}: {1}  -  {2}  -  {3}  -  {4}", callCount, call.Time, call.CallType, FormatedDuration(call.Duration), call.UserName);
                     if (callCount >= topCallCount) break;
                 }
             }
@@ -113,7 +111,7 @@ namespace CallAugger
 
         public string InlineCallerStatString()
         {
-            return $"{FormatedPhoneNumber()} - Total calls: {TotalCalls} - Total Duration: {FormatedDuration(TotalDuration)}";
+            return $"{FormatedPhoneNumber()} - Calls: {TotalCalls} : {FormatedDuration(TotalDuration)}";
         }
 
     }

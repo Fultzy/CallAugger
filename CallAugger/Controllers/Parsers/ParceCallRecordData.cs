@@ -8,51 +8,39 @@ namespace CallAugger.Controllers.Parsers
 {
     internal class ParseCallRecordData : Parse
     {
-        public PhoneNumber ParseCallRecordCaller(CallRecord callRecord)
+
+        // This method takes a call record and returns a PhoneNumber object
+        public PhoneNumber ParseCallRecordCaller(CallRecord callRecord, List<PhoneNumber> phoneNumbers)
         {
-            String phoneNumberString = callRecord.Caller;
-            PhoneNumber thisPhoneNumber = ParsedPhoneNumbers.Find(pn => pn.Number == phoneNumberString);
+            String phoneNumberstr = callRecord.Caller;
+            PhoneNumber thisPhoneNumber = phoneNumbers.Find(pn => pn.Number == phoneNumberstr);
 
-
-            // Add the call record to the parced phone numbers list if it is already there
-            if (thisPhoneNumber != null)
-            {
-                thisPhoneNumber.AddCall(callRecord);
-            }
-            else // Create a new PhoneNumber object
+            // if number is not make one
+            if (thisPhoneNumber == null)
             {
                 thisPhoneNumber = new PhoneNumber()
                 {
-                    Number = phoneNumberString,
+                    Number = phoneNumberstr,
                 };
-
-                thisPhoneNumber.AddCall(callRecord);
             }
 
             return thisPhoneNumber;
         }
 
-        public User ParseCallRecordUser(CallRecord callRecord)
+        // This method takes a call record and returns a User object
+        public User ParseCallRecordUser(CallRecord callRecord, List<User> users)
         {
             String userName = callRecord.UserName;
-            User thisUser = null;
+            User thisUser = users.Find(pu => pu.Name == userName);
 
-
-            // Add the call record to the parced users list if it is already there
-            if (ParsedUsers.Any(pu => pu.Name == userName))
-            {
-                thisUser = ParsedUsers.Find(pu => pu.Name == userName);
-                thisUser.AddCall(callRecord);
-            }
-            else // Create a new User object
+            // if user exists add call to it, if not make one and add call
+            if (thisUser == null)
             {
                 thisUser = new User()
                 {
                     Name = userName,
                     Extention = callRecord.UserExtention
                 };
-
-                thisUser.AddCall(callRecord);
             }
 
             return thisUser;

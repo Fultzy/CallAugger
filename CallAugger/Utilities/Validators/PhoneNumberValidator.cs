@@ -1,18 +1,19 @@
 ﻿using System.Linq;
 using System.Text.RegularExpressions;
 
-internal class PhoneNumberValidator
+static class PhoneNumberValidator
 {
-    public string IsPhoneNumber(string phoneNumber)
+    public static bool IsPhoneNumber(string phoneNumber)
     {
         Regex regex = new Regex(@"^\d{10}$");
-        if (regex.IsMatch(phoneNumber))
+
+        if (regex.IsMatch(phoneNumber) && phoneNumber.Length == 10)
         {
-            return $"{nameof(PhoneNumberValidator)} is valid";
+            return true;
         }
         else
         {
-            return "Invalid phone number format";
+            return false;
         }
     }
 }

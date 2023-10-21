@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 
 namespace CallAugger
 {
-    internal class User
+    public class User
     {
+        public int id { get; set; }
         public string Name { get; set; }
         public string Extention { get; set; }
 

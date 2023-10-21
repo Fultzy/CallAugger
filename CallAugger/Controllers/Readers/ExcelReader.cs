@@ -118,6 +118,7 @@ namespace CallAugger.Controllers
         }
 
 
+        // take each value in this row and add it to a list uses null for missing
         public List<string> RangeToList(Microsoft.Office.Interop.Excel.Range inputRange)
         {
             object[,] cellValues = (object[,])inputRange.Value;
@@ -126,7 +127,7 @@ namespace CallAugger.Controllers
             return list;
         }
 
-
+        // convert a number to a letter
         private string ConvertToLetter(int num)
         {
             string letter = "";
@@ -139,7 +140,7 @@ namespace CallAugger.Controllers
             return letter.ToUpper();
         }
 
-
+        // get the headers from the first row of the sheet
         private Dictionary<string, int> GetHeaders(Worksheet sheet)
         {
             Dictionary<string, int> headers = new Dictionary<string, int>();

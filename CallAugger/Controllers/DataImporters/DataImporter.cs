@@ -1,10 +1,7 @@
-﻿using Microsoft.Office.Interop.Excel;
+﻿using CallAugger.Utilities.DataBase;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace CallAugger.Controllers.DataImporters
 {
@@ -21,19 +18,22 @@ namespace CallAugger.Controllers.DataImporters
         public List<CallRecord> ImportCallData(string path)
         {
             var startTime = DateTime.Now;
-            var IImporter = new CallRecordDataImporter();
+            var ICallImporter = new CallRecordDataImporter();
             List<CallRecord> callRecords = null;
 
-            // Create a list of 
-            var data = IImporter.ReadInCallRecordData(path);
+            // Open Files and return the Data inside of it
+            List<List<string>> data = ICallImporter.ReadInCallRecordData(path);
 
-            // use the list of ExcelReaders to create a list of CallRecords
-            callRecords = IImporter.CreateCallRecords(data);
-            
-            // write how long it took to complete these tasks
-            var endTime = DateTime.Now;
-            var timeSpan = endTime - startTime;
-            Console.WriteLine($" ~ Took {Math.Round(timeSpan.TotalMinutes, 2)} minutes\n");
+            if (data != null)
+            {
+                // Create CallRecords from the data above
+                callRecords = ICallImporter.CreateCallRecords(data);
+
+                // write how long it took to complete these tasks
+                var endTime = DateTime.Now;
+                var timeSpan = endTime - startTime;
+                Console.WriteLine($" ~ Took {Math.Round(timeSpan.TotalMinutes, 2)} minutes\n");
+            }
 
             return callRecords;
         }
@@ -43,20 +43,23 @@ namespace CallAugger.Controllers.DataImporters
         public List<Pharmacy> ImportPharmacyData(string path)
         {
             var startTime = DateTime.Now;
-            var IImporter = new PharmacyDataImporter();
+            var IPharmImporter = new PharmacyDataImporter();
             List<Pharmacy> pharmacies = null;
 
-            // create a list of ExcelReaders
-            var data = IImporter.ReadInPharmacyData(path);
+            // Open Files and return the Data inside of it
+            List<List<string>> data = IPharmImporter.ReadInPharmacyData(path);
 
-            // use the list of ExcelReaders to create a list of Pharmacies
-            pharmacies = IImporter.CreatePharmacyRecords(data);
+            if (data != null)
+            {
+                // Create Pharmacies from the data above
+                pharmacies = IPharmImporter.CreatePharmacyRecords(data);
+                
+                // write how long it took to complete these tasks
+                var endTime = DateTime.Now;
+                var timeSpan = endTime - startTime;
+                Console.WriteLine($" ~ Took {Math.Round(timeSpan.TotalMinutes, 2)} minutes\n");
+            }
 
-
-            // write how long it took to complete these tasks
-            var endTime = DateTime.Now;
-            var timeSpan = endTime - startTime;
-            Console.WriteLine($" ~ Took {Math.Round(timeSpan.TotalMinutes, 2)} minutes\n");
 
             return pharmacies;
         }

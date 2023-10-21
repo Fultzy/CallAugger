@@ -1,5 +1,9 @@
-﻿using System;
+﻿using CallAugger.Utilities;
+using CallAugger.Utilities.DataBase;
+using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.Data.SQLite;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,128 +12,169 @@ namespace CallAugger.Controllers.Parsers
 {
     internal class Parse
     {
-        ///////////////////////////////////////////////////////////////
-        // This Parcing Class requries two Lists of objects to be passed in.
-        // The first is a list of CallRecords and the second is a list of Pharmacies.
-        // these lists are then used to create a list of ParsedPharmacies and a list of
-        // ParsedPhoneNumbers to then be accessable by the rest of the program in 
-        // addition to Users and Phonenumbers that do not belong to a pharmacy.
 
-        public List<User>        ParsedUsers            = new List<User>();
-        public List<Pharmacy>    ParsedPharmacies       = new List<Pharmacy>();
-        public List<PhoneNumber> ParsedPhoneNumbers     = new List<PhoneNumber>();
-        public List<PhoneNumber> UnassignedPhoneNumbers = new List<PhoneNumber>();
-
-        public List<PhoneNumber> ParseCallRecordData(List<CallRecord> callRecords)
+        public void ParseCallRecordData(List<CallRecord> callRecords)
         {
             var IParser = new ParseCallRecordData();
+            var dbHandle = new SQLiteHandler();
 
-            foreach (var callRecord in callRecords)
+            // begin progress bar DEBUGGING w/TIMER
+            var startTime = DateTime.Now;
+            int progress = 0;
+            ProgressBarUtility.WriteProgressBar(0);
+
+            int badnum = 0;
+
+            // Take Snapshot of Current db
+            var phoneNumbers = dbHandle.GetAllPhoneNumbers();
+            var users        = dbHandle.GetAllUsers();
+
+
+
+
+
+            using (SQLiteConnection connection = new SQLiteConnection(ConfigurationManager.ConnectionStrings["Default"].ConnectionString))
             {
-                PhoneNumber caller = IParser.ParseCallRecordCaller(callRecord);
-                User        user   = IParser.ParseCallRecordUser(callRecord);
+                connection.Open();
 
-                if (caller.Number.Length > 3)
+                foreach (var callRecord in callRecords)
                 {
-                    // if this phone number is not already in the list add it
-                    if (!ParsedPhoneNumbers.Any(pn => pn.Number == caller.Number))
+
+                    // these two functions will return either a new object or
+                    // the existing object from the db
+                    PhoneNumber caller = IParser.ParseCallRecordCaller
+                        (callRecord, phoneNumbers);
+
+                    User user = IParser.ParseCallRecordUser
+                        (callRecord, users);
+
+
+                    if (PhoneNumberValidator.IsPhoneNumber(callRecord.Caller))
                     {
-                        ParsedPhoneNumbers.Add(caller);
-                    }
-                    else // find the phone number and add this call record to it
-                    {
-                        ParsedPhoneNumbers.Find(pn => pn.Number == caller.Number).AddCall(callRecord);
-                    }
-
-                    // if this user is not already in the list add it
-                    if (!ParsedUsers.Any(u => u.Name == user.Name))
-                    {
-                        ParsedUsers.Add(user);
-                    }
-                    else // find the user and add this call record to it
-                    {
-                        ParsedUsers.Find(u => u.Name == user.Name).AddCall(callRecord);
-                    }
-                }
-                else // if both to and from numbers are user extention numbers then we need to find the other user
-                {
-                    
-                }
+                        // if this phone number is not already in the db add it
+                        if (!phoneNumbers.Any(pn => pn.Number == caller.Number))
+                        {
+                            caller = dbHandle.InsertPhoneNumber(connection, caller);
+                            phoneNumbers.Add(caller);
+                        }
 
 
-                /*
-                // if the transfer user isnt Tech Support, Weekend Support or null
-                if (callRecord.TransferUser != "Tech Support" && callRecord.TransferUser != "Weekend Support" && callRecord.TransferUser != null)
-                {
-                    // if this transfer user is not already in the list add it
-                    if (!ParsedUsers.Any(u => u.Name == callRecord.TransferUser))
-                    {
-                        // the issues here is that the transfer user can be a new user and can have been forwarded a 
-                        // inbound call such as : 
-
-                        // Inbound call |Joshua Bowman|Matthew Doherty|7/5/2023|1424|Terminating|Yes|From|MI|18102157771|336|
-
-                        // we cant assign this transfer user to the call record because we dont know the second users extention
-
-                        // curently we are adding the call times to both the transfer user and the user that answered. 
-                        // this is not fair but also there is no way of knowing at which point the call had split. 
+                        // if this user is not already in the db add it
+                        if (!users.Any(u => u.Name == user.Name))
+                        {
+                           user = dbHandle.InsertUser(connection, user);
+                           users.Add(user);
+                        }
 
                         
-                        User transferUser = new User()
+                        var thisCall = dbHandle.GetCallRecord(connection, callRecord.id);
+
+                        // assign the PhoneNumberID and UserID to the callRecord
+                        if (thisCall.PhoneNumberID == 0 || thisCall.UserID == 0)
                         {
-                            Name = callRecord.TransferUser
-                        };
+                            dbHandle.UpdateCallRecordIDs
+                                (connection, callRecord, caller.id, user.id);
+                        }
 
-                        transferUser.AddCall(callRecord);
-                        ParsedUsers.Add(transferUser);
                     }
-                    else // find the transfer user and add this call record to it
+                    else if (caller.Number.Length == 3)
                     {
-                        ParsedUsers.Find(u => u.Name == callRecord.TransferUser).AddCall(callRecord);
+                        // its a user extention, usually meaning an internal call. 
+                        dbHandle.DeleteCall(callRecord);
+                        badnum++;
                     }
+                    else // idk bro, what ever it is..
+                    {
+                        dbHandle.DeleteCall(callRecord);
+                        badnum++;
+                    }
+
+                    /*
+                    // if the transfer user isnt Tech Support, Weekend Support or null
+                    if (callRecord.TransferUser != "Tech Support" && callRecord.TransferUser != "Weekend Support" && callRecord.TransferUser != null)
+                    {
+                        // if this transfer user is not already in the list add it
+                        if (!ParsedUsers.Any(u => u.Name == callRecord.TransferUser))
+                        {
+                            // the issues here is that the transfer user can be a new user and can have been forwarded a 
+                            // inbound call such as : 
+
+                            // Inbound call |Joshua Bowman|Matthew Doherty|7/5/2023|1424|Terminating|Yes|From|MI|18102157771|336|
+
+                            // we cant assign this transfer user to the call record because we dont know the second users extention
+
+                            // curently we are adding the call times to both the transfer user and the user that answered. 
+                            // this is not fair but also there is no way of knowing at which point the call had split. 
+
+                        
+                            User transferUser = new User()
+                            {
+                                Name = callRecord.TransferUser
+                            };
+
+                            transferUser.AddCall(callRecord);
+                            ParsedUsers.Add(transferUser);
+                        }
+                        else // find the transfer user and add this call record to it
+                        {
+                            ParsedUsers.Find(u => u.Name == callRecord.TransferUser).AddCall(callRecord);
+                        }
+                    }
+                    */
+
+                    // Update Progress bar
+                    progress++;
+                    ProgressBarUtility.WriteProgressBar((int)((progress * 100) / callRecords.Count()), true);
                 }
-                */
 
-
+                connection.Close();
             }
 
-            return ParsedPhoneNumbers;
+            // write how long it took to complete these tasks
+            var endTime = DateTime.Now;
+            var timeSpan = endTime - startTime;
+            Console.WriteLine($" ~ Took {Math.Round(timeSpan.TotalSeconds, 2)} seconds..\n");
         }
 
-        public List<Pharmacy> ParsePharmacyData(List<Pharmacy> pharmacies)
+
+        public void ParsePharmacyData()
         {
             var IParser = new ParsePharmacyData();
-            
-            foreach (PhoneNumber phoneNumber in ParsedPhoneNumbers)
+            var dbHandle = new SQLiteHandler();
+
+            // we want to see all the pharmacies that are in the db, not only new ones
+            List<Pharmacy> pharmacies = dbHandle.GetAllPharmacies();
+            List<PhoneNumber> phoneNumbers = dbHandle.GetAllPhoneNumbers();
+
+            using (SQLiteConnection connection = new SQLiteConnection(ConfigurationManager.ConnectionStrings["Default"].ConnectionString))
             {
-                if (IParser.IsRegisteredToPharmacy(phoneNumber, pharmacies))
-                {
-                    // find the pharmacy that matches this phone number
-                    var matchingPharmacy = pharmacies.Find(ph => ph.PhoneNumbers.Contains(phoneNumber));
-                    if (matchingPharmacy != null)
-                    {
-                        matchingPharmacy.AddPhoneNumber(phoneNumber);
-                        ParsedPharmacies.Add(matchingPharmacy);
-                    }
-                }
-                else if (IParser.IsPrimaryPhoneNumber(phoneNumber, pharmacies))
-                {
-                    // find the pharmacy that matches this phone number
-                    var matchingPharmacy = pharmacies.Find(ph => ph.PrimaryPhoneNumber == phoneNumber.Number);
+                connection.Open();
 
-                    if (matchingPharmacy != null)
+                foreach (PhoneNumber phoneNumber in phoneNumbers)
+                {
+                    if (IParser.IsRegisteredToPharmacy(phoneNumber, pharmacies))
                     {
-                        matchingPharmacy.AddPhoneNumber(phoneNumber);
-                        ParsedPharmacies.Add(matchingPharmacy);
+                        // find the pharmacy that matches this phone number
+                        var matchingPharmacy = pharmacies.Find(ph => ph.PhoneNumbers.Contains(phoneNumber));
+
+                        phoneNumber.PharmacyID = matchingPharmacy.id;
+
+                        dbHandle.UpdatePhoneNumberPharmacyID(connection, phoneNumber, matchingPharmacy.id);
+
+                    }
+                    else if (IParser.IsPrimaryPhoneNumber(phoneNumber, pharmacies))
+                    {
+                        // find the pharmacy that matches this phone number
+                        var matchingPharmacy = pharmacies.Find(ph => ph.PrimaryPhoneNumber == phoneNumber.Number);
+
+                        phoneNumber.PharmacyID = matchingPharmacy.id;
+
+                        dbHandle.UpdatePhoneNumberPharmacyID(connection, phoneNumber, matchingPharmacy.id);
                     }
                 }
-                else // if the phone number is not a PrimaryPoneNumber and not registered under a pharmacy add it to unassigned
-                {
-                    UnassignedPhoneNumbers.Add(phoneNumber);
-                }
+
+                connection.Close();
             }
-
-            return ParsedPharmacies;
         }
     }
 }

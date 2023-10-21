@@ -7,6 +7,9 @@ using CallAugger.Controllers.DataImporters;
 using CallAugger.Controllers.Parsers;
 using CallAugger.Controllers.Generators;
 using System.Net.Sockets;
+using CallAugger.Utilities.DataBase;
+using System.Data.SQLite;
+using System.Configuration;
 
 namespace CallAugger
 {
@@ -42,41 +45,48 @@ namespace CallAugger
             // Get path
             string path = Directory.GetCurrentDirectory();
 
-
             // configure console window
             Console.SetWindowSize(115, 45);
 
+            // Begin DataBase Connection
+            SQLiteHandler dbHandle = new SQLiteHandler();
 
-            // Import Data and Create Data Stores
+
+            // If these lists are null then no files were found
             var IDataDoer = new DataImporter();
-            List<CallRecord> allCallRecords = IDataDoer.ImportCallData(path);
-            List<Pharmacy> allPharmacies = IDataDoer.ImportPharmacyData(path);
+            List<CallRecord> newCallRecords = IDataDoer.ImportCallData(path);
+            List<Pharmacy> newPharmacies    = IDataDoer.ImportPharmacyData(path);
 
 
-            // Parce Data
+            // Parce any new Data if any (CallRecords need to be first)
+            Console.WriteLine("Processing...");
             var IParser = new Parse();
-            
-            // a list of all phone numbers                            - sorted by TotalDuration
-            List<PhoneNumber> allPhoneNumbers = 
-                IParser.ParseCallRecordData(allCallRecords).OrderByDescending(pn => pn.TotalDuration).ToList();
+            if (newCallRecords != null) IParser.ParseCallRecordData(newCallRecords);
+            if (newPharmacies  != null) IParser.ParsePharmacyData();
 
-            // a list of pharmacies that matched call records         - sorted by TotalDuration
-            List<Pharmacy> matchingPharmacies = 
-                IParser.ParsePharmacyData(allPharmacies).OrderByDescending(ph => ph.TotalDuration).ToList();
-           
-           
+
+
+            // take snapshot of New database after update
+            List<User>               users = dbHandle.GetAllUsers();
+            List<Pharmacy>      pharmacies = dbHandle.GetAllPharmacies();
+            List<CallRecord>   callRecords = dbHandle.GetAllCallRecords();
+            List<PhoneNumber> phoneNumbers = dbHandle.GetAllPhoneNumbers();
+            List<PhoneNumber> unassignedPhoneNumbers = dbHandle.GetUnassignedPhoneNumbers();
+
+ 
 
             // create a new Excel file
             //var IExcelGenerator = new ExcelGenerator(path);
 
             //IExcelGenerator.CreateNewExcelFile();
 
-         
+
+
             /////////////////////// BEGIN MAIN PROGRAM LOOP ///////////////////////////
             bool GameOver = false;
             while (GameOver == false)
             {
-                // creat a  CLI main menu
+                // create a  CLI main menu
                 var MainMenu = new CliMenu
                 {
                     OptionPadding = 3,
@@ -101,11 +111,11 @@ namespace CallAugger
                         MainMenu.ShowSelected(1);
 
 
-                        PhoneNumber selectedPhoneNumberToAdd = UnassignedPhoneNumberSelectionLoop(IParser);
+                        PhoneNumber selectedPhoneNumberToAdd = UnassignedPhoneNumberSelectionLoop(dbHandle.GetUnassignedPhoneNumbers());
 
                         if (selectedPhoneNumberToAdd == null) break;
 
-                        Pharmacy selectedPharmacyToAddTo = PharmacySearchSelectionLoop(IParser, allPharmacies);
+                        Pharmacy selectedPharmacyToAddTo = PharmacySearchSelectionLoop(pharmacies);
 
 
                         // add the new phone number to the selected pharmacy
@@ -118,12 +128,18 @@ namespace CallAugger
                             if (confirm == true)
                             {
                                 selectedPharmacyToAddTo.AddPhoneNumber(selectedPhoneNumberToAdd);
-                                IParser.UnassignedPhoneNumbers.Remove(selectedPhoneNumberToAdd);
+                                using (SQLiteConnection connection = new SQLiteConnection(ConfigurationManager.ConnectionStrings["Default"].ConnectionString))
+                                {
+                                    connection.Open();
+                                    dbHandle.UpdatePhoneNumberPharmacyID(connection, selectedPhoneNumberToAdd, selectedPharmacyToAddTo.id);
+                                    connection.Close();
+                                }
+                                unassignedPhoneNumbers.Remove(selectedPhoneNumberToAdd);
 
                                 Console.Clear();
                                 selectedPharmacyToAddTo.WritePharmacyInfo();
                             
-                                Console.WriteLine("\n Added {0} to {1}", selectedPhoneNumberToAdd.FormatedPhoneNumber(), selectedPharmacyToAddTo.Name);
+                                Console.WriteLine("\n Added {0} to {1}",        selectedPhoneNumberToAdd.FormatedPhoneNumber(), selectedPharmacyToAddTo.Name);
                                 Console.Write("\nPress the AnyKey to Continue...");
                                 Console.ReadKey();
                             }
@@ -135,7 +151,7 @@ namespace CallAugger
                         Console.Clear();
                         MainMenu.ShowSelected(2);
 
-                        Pharmacy selectedPharmacyToRemoveFrom = PharmacySearchSelectionLoop(IParser, allPharmacies);
+                        Pharmacy selectedPharmacyToRemoveFrom = PharmacySearchSelectionLoop(pharmacies);
 
                         if (selectedPharmacyToRemoveFrom == null) break;
 
@@ -153,8 +169,16 @@ namespace CallAugger
                                 if (confirm == true)
                                 {
                                     // remove this phone number from the pharmacy and add it back to the list of unassigned
+
+                                    using (SQLiteConnection connection = new SQLiteConnection(ConfigurationManager.ConnectionStrings["Default"].ConnectionString))
+                                    {
+                                        connection.Open();
+                                        dbHandle.UpdatePhoneNumberPharmacyID(connection, selectedPhoneNumberToRemove, 0);
+                                        connection.Close();
+                                    }
+
                                     selectedPharmacyToRemoveFrom.PhoneNumbers.Remove(selectedPhoneNumberToRemove);
-                                    IParser.UnassignedPhoneNumbers.Add(selectedPhoneNumberToRemove);
+                                    unassignedPhoneNumbers.Add(selectedPhoneNumberToRemove);
 
                                     Console.Clear();
                                     selectedPharmacyToRemoveFrom.WritePharmacyInfo();
@@ -162,10 +186,6 @@ namespace CallAugger
                                     Console.WriteLine("\n Removed {0} from {1}", selectedPhoneNumberToRemove.FormatedPhoneNumber(), selectedPharmacyToRemoveFrom.Name);
                                 }
 
-                            }
-                            else if (selectedPharmacyToRemoveFrom.PhoneNumbers.Count() == 1)
-                            {
-                                Console.WriteLine("\n Cannot Remove Only Phone Number");
                             }
                             else if (selectedPharmacyToRemoveFrom.PrimaryPhoneNumber == selectedPhoneNumberToRemove.Number)
                             {
@@ -199,7 +219,7 @@ namespace CallAugger
                         Console.Clear();
                         MainMenu.ShowSelected(3);
 
-                        WriteTopScores(numOfPharmacies, numOfUnassignedPhoneNumbers, numOfCallRecords, matchingPharmacies, IParser.UnassignedPhoneNumbers);
+                        WriteTopScores(numOfPharmacies, numOfUnassignedPhoneNumbers, numOfCallRecords, pharmacies, unassignedPhoneNumbers);
 
                         Console.Write("\nPress the AnyKey to Continue...");
                         Console.ReadKey();
@@ -214,7 +234,7 @@ namespace CallAugger
 
 
                         // show all users and their metrics
-                        foreach (var user in IParser.ParsedUsers.OrderBy(pu => pu.Name))
+                        foreach (var user in users.OrderBy(pu => pu.Name))
                         {
                             Console.WriteLine("\n\n");
                             user.WriteUserStats();
@@ -230,11 +250,12 @@ namespace CallAugger
                 }
             }
             /////////////////////// END MAIN LOOP ///////////////////////////
+
         }
 
         //////////////////////////////////////  MAIN METHODS  ///////////////
-        
-        static PhoneNumber PhoneNumberRemovalLoop(Pharmacy selectedPharmacyToRemoveFrom)
+
+         static PhoneNumber PhoneNumberRemovalLoop(Pharmacy selectedPharmacyToRemoveFrom)
         {
             PhoneNumber selectedPhoneNumber = null;
             bool didSelectPhoneNumber = false;
@@ -285,12 +306,12 @@ namespace CallAugger
 
             return selectedPhoneNumber;
         }
-      
+
         
-        static PhoneNumber UnassignedPhoneNumberSelectionLoop(Parse IParser)
+        static PhoneNumber UnassignedPhoneNumberSelectionLoop(List<PhoneNumber> unassignedPhoneNumbers)
         {
             string searchTerm = "";
-            SearchUtilities ISearchUtility = new SearchUtilities();
+            SearchUtilities ISearchUtility = new SearchUtilities();  // make this shit static af
             PhoneNumber selectedPhoneNumber = null;
             bool didSelectPhoneNumber = false;
 
@@ -298,7 +319,7 @@ namespace CallAugger
             {
                 // Use the searchTerm to find matching pharmacies && sort them by total duration
                 if (searchTerm.Length < 1) searchTerm = "";
-                var searchResults = ISearchUtility.ListMatchingPhoneNumbers(searchTerm, IParser.UnassignedPhoneNumbers).OrderByDescending(pn => pn.TotalDuration).ToList();
+                var searchResults = ISearchUtility.ListMatchingPhoneNumbers(searchTerm, unassignedPhoneNumbers).OrderByDescending(pn => pn.TotalDuration).ToList();
 
 
                 // create a CLI menu to select a pharmacy showing the top 5 unassigned phonenumbers
@@ -356,7 +377,7 @@ namespace CallAugger
         }
 
         
-        static Pharmacy PharmacySearchSelectionLoop(Parse IParser, List<Pharmacy> allPharmacies)
+        static Pharmacy PharmacySearchSelectionLoop(List<Pharmacy> allPharmacies)
 
         {
             var searchTerm = "";
@@ -420,7 +441,7 @@ namespace CallAugger
         }
 
 
-        static void UserSearchLoop(Parse IParser)
+        static void UserSearchLoop(List<User> users)
         {
             var searchTerm = "A";
             SearchUtilities ISearchUtility = new SearchUtilities();
@@ -432,7 +453,7 @@ namespace CallAugger
                 // Use the searchTerm to find matching pharmacies
                 if (searchTerm.Length < 1) searchTerm = "A";
 
-                var searchResults = ISearchUtility.ListMatchingUsers(searchTerm, IParser.ParsedUsers.ToList());
+                var searchResults = ISearchUtility.ListMatchingUsers(searchTerm, users);
 
                 // create a CLI menu to select a pharmacy showing the top 5 unassigned phonenumbers
                 var searchPharmacyMenu = new CliMenu()
@@ -477,7 +498,7 @@ namespace CallAugger
             }
         }
 
-        
+
         // Write the top n pharmacies and top n phone numbers to the console
         private static void WriteTopScores(int topPharmacyCount, int topPhoneNumberCount, int topCallsCount, List<Pharmacy> matchingPharmacies, List<PhoneNumber> unassignedPhoneNumbers)
         {

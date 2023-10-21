@@ -1,6 +1,9 @@
 ﻿using CallAugger.Utilities;
+using CallAugger.Utilities.DataBase;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -27,49 +30,31 @@ namespace CallAugger.Controllers.DataImporters
             var PharmacyFiles = Directory.EnumerateFiles(pharmacyDirPath);
             var data = new List<List<string>>();
 
-            if (PharmacyFiles.Count() == 0)
-            {
-                Console.WriteLine($"TempError: no files in the Pharmacy Info folder.");
-                Console.Write("\nPress the AnyKey to Close the program...");
-                Console.ReadKey();
-                Environment.Exit(0);
-            }
+            if (PharmacyFiles.Count() == 0) return null;
 
             ///////////////////////////////////////////////
             // Read Each File in the CallRecords Directory
             foreach (string currentFile in PharmacyFiles)
             {
-                // get full file path
                 string fileName = currentFile.Substring(pharmacyDirPath.Length);
-                var filePath = pharmacyDirPath + fileName;
+                var fullFilePath = pharmacyDirPath + fileName;
 
 
                 if (fileName.Contains(".csv") || fileName.Contains(".xlsx"))
                 {
                     // a Whole lotta bullshit
-                    var xReader = new ExcelReader(filePath);
-                    
-                    List<List<string>> xReaderData = xReader.ReadData();
-
+                    var xReader = new ExcelReader(fullFilePath);
+                    data.AddRange(xReader.ReadData());
                     xReader.CloseReader();
 
-                    try
-                    {
-                        // add all rows from xreaderdata to data
-                        foreach (var row in xReaderData)
-                        {
-                            data.Add(row);
-                        }
-                    }
-                    catch (Exception e) when (xReaderData == null)
-                    {
-                        throw new Exception(
-                            $"Error in PharmacyDataImporter:ReadInPharmacyData() ~ xReaderData is null.\n {e.Message}\n");
-                    }
+
+                    // move the file into the archive folder
+                    var archivePath = path + @"\Data\Pharmacy Info\Archive";
+                    //File.Move(fullFilePath, archivePath + fileName);
                 }
                 else
                 {
-                    throw new Exception($"Error: {filePath} is not a .csv or .xlsx file.");
+                    throw new Exception($"Error: {fileName} is not a .csv or .xlsx file.");
                 }
             }
             
@@ -81,11 +66,11 @@ namespace CallAugger.Controllers.DataImporters
         public List<Pharmacy> CreatePharmacyRecords(List<List<string>> pharmaData)
         {
             // Create Data store
-            List<Pharmacy> pharmacies = new List<Pharmacy>();
+            SQLiteHandler dbHandle = new SQLiteHandler();
+            Console.Write(" Checking DB for new Entries...");
 
 
-            // the first row in call data contains the headers.
-            // create a dictionary of headers(string key) and their index(value)
+            // the first row in call data contains headers.
             var headers = new Dictionary<string, int>();
             var headerRow = pharmaData[0];
             for (int i = 0; i < headerRow.Count; i++)
@@ -93,50 +78,41 @@ namespace CallAugger.Controllers.DataImporters
                 headers.Add(headerRow[i], i);
             }
 
-
-            for (int rowNum = 1; rowNum < pharmaData.Count; rowNum++)
+            using (SQLiteConnection connection = new SQLiteConnection(ConfigurationManager.ConnectionStrings["Default"].ConnectionString))
             {
+                connection.Open();
 
-                ///////////////////////////////////////////////
-                // Create a Pharmacy object
-                var pharmacy = new Pharmacy();
-                {
-                    pharmacy.Name = pharmaData[rowNum][headers["Pharmacy Name"]];
-                    pharmacy.ContactName = pharmaData[rowNum][headers["Contact 1 First Name"]] + " " + pharmaData[rowNum][headers["Contact 1 Last Name"]];
-                    pharmacy.Npi = pharmaData[rowNum][headers["NPI #"]];
-                    pharmacy.Dea = pharmaData[rowNum][headers["DEA #"]];
-                    pharmacy.Ncpdp = pharmaData[rowNum][headers["NCPDP #"]];
-                    pharmacy.Address = pharmaData[rowNum][headers["Address"]];
-                    pharmacy.City = pharmaData[rowNum][headers["City"]];
-                    pharmacy.State = pharmaData[rowNum][headers["State"]];
-                    pharmacy.Zip = pharmaData[rowNum][headers["Zip"]];
-                    pharmacy.PrimaryPhoneNumber = pharmaData[rowNum][headers["Phone # (no dashes)"]];
-                }
-
-               // pharmacy.WriteInlinePharmacyInfo();
-                pharmacies.Add(pharmacy);
-
-                /*
-                // Loop through the rows of this sheet using parallelism
-
-                object _lock = new object();
-                Parallel.For(2, maxRows + 1, row =>
+                for (int rowNum = 1; rowNum < pharmaData.Count; rowNum++)
                 {
 
-                   
-                    lock (_lock)
+                    ///////////////////////////////////////////////
+                    // Create a Pharmacy object
+                    var pharmacy = new Pharmacy();
                     {
-                        // Update Progress bar
-                        int ProgressPercentage = (int)((completedRows * 100) / maxRows);
-                        ProgressBarUtility.WriteProgressBar(ProgressPercentage, true);
+                        pharmacy.Name = pharmaData[rowNum][headers["Pharmacy Name"]];
+                        pharmacy.Npi = pharmaData[rowNum][headers["NPI #"]];
+                        pharmacy.Dea = pharmaData[rowNum][headers["DEA #"]];
+                        pharmacy.Ncpdp = pharmaData[rowNum][headers["NCPDP #"]];
+                        pharmacy.Address = pharmaData[rowNum][headers["Address"]];
+                        pharmacy.City = pharmaData[rowNum][headers["City"]];
+                        pharmacy.State = pharmaData[rowNum][headers["State"]];
+                        pharmacy.Zip = pharmaData[rowNum][headers["Zip"]];
+                        pharmacy.ContactName1 = pharmaData[rowNum][headers["Contact 1 Name"]];
+                        pharmacy.ContactName2 = pharmaData[rowNum][headers["Contact 2 Name"]];
+                        pharmacy.PrimaryPhoneNumber = pharmaData[rowNum][headers["Phone # (no dashes)"]];
                     }
 
-                });
-                */
+                    dbHandle.InsertPharmacy(connection, pharmacy);
+                }
+
+                connection.Close();
             }
 
-            Console.Write(" ~ {0} Total Pharmacies", pharmacies.Count);
-            return pharmacies;
+            // Text For Progress Status Updates
+            Console.Write("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b");
+            Console.Write(" ~ {0} Total Pharmacies in file", pharmaData.Count - 1);
+
+            return dbHandle.GetAllPharmacies();
         }
     }
 }
