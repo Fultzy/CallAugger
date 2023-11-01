@@ -26,7 +26,7 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>1</ApplicationRevision>
+    <ApplicationRevision>2</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -63,6 +63,9 @@
   <PropertyGroup>
     <SignManifests>true</SignManifests>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>Augie-Doggie-and-Doggie-Daddy-298x300 %281%29.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.dll</HintPath>
@@ -95,6 +98,7 @@
     <Reference Include="System.Data.SQLite.Linq, Version=1.0.118.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Data.SQLite.Linq.1.0.118.0\lib\net46\System.Data.SQLite.Linq.dll</HintPath>
     </Reference>
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Memory.4.5.3\lib\netstandard2.0\System.Memory.dll</HintPath>
     </Reference>
@@ -105,6 +109,7 @@
     <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.4.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.5.2\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
     </Reference>
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -114,11 +119,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controllers\DataImporters\DataImporter.cs" />
+    <Compile Include="Controllers\Generators\Add-ons\WeekGraphAddon.cs" />
+    <Compile Include="Controllers\Generators\Worksheets\CallerReportWorksheet.cs" />
     <Compile Include="Controllers\Generators\ExcelGenerator.cs" />
+    <Compile Include="Controllers\Generators\Worksheets\PharmacyReportWorksheet.cs" />
+    <Compile Include="Controllers\Generators\Worksheets\SupportMetricsWorksheet.cs" />
+    <Compile Include="Controllers\Generators\Worksheets\SupportRepListingWorksheet.cs" />
+    <Compile Include="Controllers\Generators\Worksheets\UnassignedPhoneNumberWorksheet.cs" />
     <Compile Include="Controllers\Parsers\Parce.cs" />
     <Compile Include="Controllers\Parsers\ParceCallRecordData.cs" />
     <Compile Include="Controllers\Parsers\ParcePharmacyData.cs" />
-    <Compile Include="Controllers\Readers\CsvReader.cs" />
     <Compile Include="Controllers\DataImporters\CallRecordDataImporter.cs" />
     <Compile Include="Controllers\DataImporters\PharmacyDataImporter.cs" />
     <Compile Include="Controllers\Readers\ExcelReader.cs" />
@@ -128,13 +138,15 @@
     <Compile Include="Models\User.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Settings\DateRange.cs" />
+    <Compile Include="Settings\AppSettings.cs" />
     <Compile Include="Utilities\CliInterface\CliMenu.cs" />
-    <Compile Include="Utilities\CliInterface\Pages.cs" />
     <Compile Include="Utilities\CliInterface\ProgressBar.cs" />
     <Compile Include="Utilities\CliInterface\SearchUtility.cs" />
     <Compile Include="Utilities\Logs\Logger.cs" />
     <Compile Include="Utilities\Sqlite\QueryStore.cs" />
     <Compile Include="Utilities\Sqlite\SqliteHandler.cs" />
+    <Compile Include="Utilities\Validators\DateValidator.cs" />
     <Compile Include="Utilities\Validators\PhoneNumberValidator.cs" />
     <Compile Include="Utilities\Validators\PharmacyValidator.cs" />
   </ItemGroup>
@@ -143,7 +155,10 @@
     <None Include="CallAugger_TemporaryKey.pfx" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="Augie-Doggie-and-Doggie-Daddy-298x300 %281%29.ico" />
+    <Content Include="Utilities\AreaCodes.txt" />
+  </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.8">
       <Visible>False</Visible>

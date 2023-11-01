@@ -18,19 +18,17 @@ namespace CallAugger.Controllers.Parsers
             var IParser = new ParseCallRecordData();
             var dbHandle = new SQLiteHandler();
 
+            Console.WriteLine("Processing New Data...");
+
             // begin progress bar DEBUGGING w/TIMER
             var startTime = DateTime.Now;
             int progress = 0;
             ProgressBarUtility.WriteProgressBar(0);
 
-            int badnum = 0;
 
             // Take Snapshot of Current db
             var phoneNumbers = dbHandle.GetAllPhoneNumbers();
             var users        = dbHandle.GetAllUsers();
-
-
-
 
 
             using (SQLiteConnection connection = new SQLiteConnection(ConfigurationManager.ConnectionStrings["Default"].ConnectionString))
@@ -49,7 +47,7 @@ namespace CallAugger.Controllers.Parsers
                         (callRecord, users);
 
 
-                    if (PhoneNumberValidator.IsPhoneNumber(callRecord.Caller))
+                    if (PhoneNumberValidator.IsPhoneNumber(callRecord.Caller)) 
                     {
                         // if this phone number is not already in the db add it
                         if (!phoneNumbers.Any(pn => pn.Number == caller.Number))
@@ -58,7 +56,6 @@ namespace CallAugger.Controllers.Parsers
                             phoneNumbers.Add(caller);
                         }
 
-
                         // if this user is not already in the db add it
                         if (!users.Any(u => u.Name == user.Name))
                         {
@@ -66,7 +63,6 @@ namespace CallAugger.Controllers.Parsers
                            users.Add(user);
                         }
 
-                        
                         var thisCall = dbHandle.GetCallRecord(connection, callRecord.id);
 
                         // assign the PhoneNumberID and UserID to the callRecord
@@ -77,16 +73,24 @@ namespace CallAugger.Controllers.Parsers
                         }
 
                     }
-                    else if (caller.Number.Length == 3)
+                    else if (caller.Number.Length == 3) // internal call 
                     {
-                        // its a user extention, usually meaning an internal call. 
-                        dbHandle.DeleteCall(callRecord);
-                        badnum++;
-                    }
-                    else // idk bro, what ever it is..
-                    {
-                        dbHandle.DeleteCall(callRecord);
-                        badnum++;
+                        //Console.WriteLine($"DEBUGGING: {callRecord.TransferUser} -> {user.Name}");
+
+                        // only create the user if it doesnt already exist
+                        if (!users.Any(u => u.Name == user.Name))
+                        {
+                            user = dbHandle.InsertUser(connection, user);
+                            users.Add(user);
+                        }
+
+
+                        // assign the PhoneNumberID and UserID to the callRecord
+                        if (callRecord.PhoneNumberID == 0 || callRecord.UserID == 0)
+                        {
+                            dbHandle.UpdateCallRecordIDs
+                                (connection, callRecord, caller.id, user.id);
+                        }
                     }
 
                     /*
@@ -172,6 +176,8 @@ namespace CallAugger.Controllers.Parsers
                         dbHandle.UpdatePhoneNumberPharmacyID(connection, phoneNumber, matchingPharmacy.id);
                     }
                 }
+
+                // get all pharmacies that dont have a primary phone number
 
                 connection.Close();
             }

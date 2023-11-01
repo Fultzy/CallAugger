@@ -9,9 +9,11 @@ namespace CallAugger
         public int PhoneNumberID { get; set; }
         public int UserID { get; set; }
 
+
         public string CallType { get; set; }
         public int Duration { get; set; }
         public DateTime Time { get; set; }
+
 
         public string UserName { get; set; }
         public string UserExtention { get; set; }
@@ -20,9 +22,38 @@ namespace CallAugger
 
 
 
-        public void WriteInfo()
+        public string InLineInfo()
         {
-            Console.WriteLine("{0}:  {1}  -  {2}  -  {3} ~ {4}: {5} || {6}:{7}", id, Time, CallType, Duration, PhoneNumberID, Caller, UserID, UserName);
+            var type = CallType;
+            if (type == "Inbound call") type = "Inbound ";
+            if (type == "Outbound call") type = "Outbound";
+
+            return $"{Time.ToString("MM/dd/yyyy hh:mm tt")}  ~  {type}  ~  {FormatedDuration(Duration)}  ~  {UserName}";
+        }
+
+        public string FormatedDuration(int duration)
+        {
+            TimeSpan time = TimeSpan.FromSeconds(duration);
+            if (time.Hours == 0)
+                return $"{time.Minutes}m {time.Seconds}s";
+            else
+                return $"{time.Hours + (time.Days * 24)}h {time.Minutes}m {time.Seconds}s";
+        }
+
+        public bool IsWeekend()
+        {
+            if (Time.DayOfWeek == DayOfWeek.Saturday || Time.DayOfWeek == DayOfWeek.Sunday)
+                return true;
+            else
+                return false;
+        }
+
+        public bool IsInternal()
+        {
+            if (Caller.Length == UserExtention.Length || Caller == "16308690873")
+                return true;
+            else
+                return false;
         }
     }
 }

@@ -18,15 +18,18 @@ namespace CallAugger
         public string Zip { get; set; }
         public string ContactName1 { get; set; }
         public string ContactName2 { get; set; }
+        public string Anniversary { get; set; }
         public string PrimaryPhoneNumber { get; set; }
 
         // The Frist phone number in this is should always be the primary phone number. 
         public List<PhoneNumber> PhoneNumbers = new List<PhoneNumber>();
         public int TotalCalls = 0;
         public int TotalDuration = 0;
+        
         public int InboundCalls = 0;
-        public int OutboundCalls = 0;
         public int InboundDuration = 0;
+
+        public int OutboundCalls = 0;
         public int OutboundDuration = 0;
 
         // writes out all the info for the pharmacy to the console
@@ -37,16 +40,21 @@ namespace CallAugger
 
 
             // write out all the info for the pharmacy to the console
-            Console.WriteLine(pad + "  ~~~~~~~~~~ " + Name + " ~~~~~~~~~~\n");
+            Console.WriteLine(pad + "\n  ~~~~~~~~~~ " + Name.Trim() + " ~~~~~~~~~~\n");
                                    
             // write Pharmacy Medical Creds
             Console.WriteLine(pad + "        Npi        Ncpdp        Dea");
             Console.WriteLine(pad + "    " + Npi + " || " + Ncpdp + " || " + Dea);
             Console.WriteLine(pad + "    {0} {1}, {2} {3}\n", Address,  City, State, Zip);
 
+            Console.WriteLine(pad + "    Anniversary: {0}\n", Anniversary);
+
             // write Pharmacy Contact Info
-            Console.WriteLine(pad + "  Contact(s): {0} {1}", ContactName1, ContactName2);
-            Console.WriteLine(pad + "  Main Phone: {0}\n", PrimaryPhoneNumber); // Install Null for missing
+            if (ContactName2 == null) Console.WriteLine(pad + "  Contact: {0}", ContactName1);
+            else Console.WriteLine(pad + "  Contact(s): {0} {1}", ContactName1, ContactName2);
+
+
+            Console.WriteLine(pad + "  Main Phone: {0}\n", FormatedPhoneNumber(PrimaryPhoneNumber));
 
             if (PhoneNumbers.Count > 1)
             {
@@ -61,6 +69,7 @@ namespace CallAugger
             {
                 phoneNumber.WriteCallerStats(callRecordCount);
             }
+
         }
 
         public void WriteInlinePharmacyInfo()
@@ -70,7 +79,7 @@ namespace CallAugger
 
         public string PharmacyInfoString()
         {
-            return $" {Name} - {PrimaryPhoneNumber} - Npi {Npi}";
+            return $"{Name} - {FormatedPhoneNumber(PrimaryPhoneNumber)} - {Npi} -   {TotalCalls}   -   {FormatedDuration(TotalDuration)}";
         }
 
         public void AddPhoneNumber(PhoneNumber newPhoneNumber)
@@ -80,11 +89,10 @@ namespace CallAugger
             
             if (foundPhoneNumber != null)
             {
-                
+                // what is this for?!?!?!
             }
             else // add the new phone number to the list of phone numbers
             {
-                // add caller stats to pharmacy over-all stats
                 TotalCalls += newPhoneNumber.TotalCalls;
                 TotalDuration += newPhoneNumber.TotalDuration;
                 InboundCalls += newPhoneNumber.InboundCalls;
@@ -104,29 +112,32 @@ namespace CallAugger
             }
         }
 
-        public void RemovePhoneNumber(string phoneNumber)
+
+        public string FormatedPhoneNumber(string number)
         {
-            // remove a phone number from PhoneNumbers 
+            string formattedNumber = number;
+            if (number.Length == 10)
+            {
+                formattedNumber = "(" + number.Substring(0, 3) + ") " + number.Substring(3, 3) + "-" + number.Substring(6, 4);
+            }
+
+            return formattedNumber;
         }
 
         public string FormatedDuration(int duration)
         {
-            string formattedDuration = duration.ToString();
-
-            if (duration > 60 && duration < 3600)
-            {
-                formattedDuration = (duration / 60).ToString() + "m " + (duration % 60).ToString() + "s";
-            }
-            else if (duration >= 3600)
-            {
-                formattedDuration = (duration / 3600).ToString() + "h " + ((duration % 3600) / 60).ToString() + "m " + ((duration % 3600) % 60).ToString() + "s";
-            }
+            TimeSpan time = TimeSpan.FromSeconds(duration);
+            if (time.Hours == 0)
+                return $"{time.Minutes}m {time.Seconds}s";
             else
-            {
-                formattedDuration = duration.ToString() + "s";
-            }
+                return $"{time.Hours + (time.Days * 24)}h {time.Minutes}m {time.Seconds}s";
+        }
 
-            return formattedDuration;
+        public float AverageDuration()
+        {
+            if (TotalDuration == 0) return 0;
+
+            return TotalDuration / TotalCalls;
         }
     }
 }

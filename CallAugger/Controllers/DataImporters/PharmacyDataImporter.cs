@@ -99,6 +99,7 @@ namespace CallAugger.Controllers.DataImporters
                         pharmacy.Zip = pharmaData[rowNum][headers["Zip"]];
                         pharmacy.ContactName1 = pharmaData[rowNum][headers["Contact 1 Name"]];
                         pharmacy.ContactName2 = pharmaData[rowNum][headers["Contact 2 Name"]];
+                        pharmacy.Anniversary = pharmaData[rowNum][headers["Rx Anniversary"]];
                         pharmacy.PrimaryPhoneNumber = pharmaData[rowNum][headers["Phone # (no dashes)"]];
                     }
 

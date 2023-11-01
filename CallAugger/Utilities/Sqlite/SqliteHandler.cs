@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using CallAugger.Utilities.Sqlite;
+using CallAugger.Settings;
+using System.Runtime.InteropServices;
+using System.Linq;
 
 namespace CallAugger.Utilities.DataBase
 {
@@ -13,7 +16,7 @@ namespace CallAugger.Utilities.DataBase
         ///////////////////////////////////////////////////////////////
         // This class is responsible for handling all SQLite database
         // interactions. It is responsible for creating the database
-        // and tables, inserting records, and retrieving records.
+        // and tables, inserting, retrieving, and deleting records
 
         public static readonly string ConnectionString = LoadConnectionString();
        
@@ -26,7 +29,6 @@ namespace CallAugger.Utilities.DataBase
         {
             return ConfigurationManager.ConnectionStrings[id].ConnectionString;
         }
-
 
 
         // Create Tables
@@ -57,7 +59,34 @@ namespace CallAugger.Utilities.DataBase
         }
 
 
+        // Drop Tables
+        public void DropTables()
+        {
+            using (SQLiteConnection connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
 
+                SQLiteCommand command = new SQLiteCommand(
+                                       QueryStore.DropCallRecordsTable, connection);
+                command.ExecuteNonQuery();
+
+                command = new SQLiteCommand(
+                                       QueryStore.DropUsersTable, connection);
+                command.ExecuteNonQuery();
+
+                command = new SQLiteCommand(
+                                       QueryStore.DropPharmaciesTable, connection);
+                command.ExecuteNonQuery();
+
+                command = new SQLiteCommand(
+                                       QueryStore.DropPhoneNumbersTable, connection);
+                command.ExecuteNonQuery();
+
+                connection.Close();
+            }
+        }
+
+       
         // Insert Records
         // passing the connection to these method vastly decreases loading times
 
@@ -100,6 +129,7 @@ namespace CallAugger.Utilities.DataBase
                 command.Parameters.AddWithValue("@Zip", pharmacy.Zip);
                 command.Parameters.AddWithValue("@ContactName1", pharmacy.ContactName1);
                 command.Parameters.AddWithValue("@ContactName2", pharmacy.ContactName2);
+                command.Parameters.AddWithValue("@Anniversary", pharmacy.Anniversary);
                 command.Parameters.AddWithValue("@PrimaryPhoneNumber", pharmacy.PrimaryPhoneNumber);
 
                 command.ExecuteNonQuery();
@@ -159,6 +189,7 @@ namespace CallAugger.Utilities.DataBase
         // List Record Getters
         public List<CallRecord> GetAllCallRecords()
         {
+            DateRange dateRange = new DateRange();
             List<CallRecord> callRecords = new List<CallRecord>();
 
             using (SQLiteConnection connection = new SQLiteConnection(ConnectionString))
@@ -172,6 +203,8 @@ namespace CallAugger.Utilities.DataBase
 
                 while (reader.Read())
                 {
+                    if (!dateRange.IsInRange(Convert.ToDateTime(reader["Time"]))) continue;
+
                     CallRecord callRecord = new CallRecord();
 
                     callRecord.id            = Convert.ToInt32(reader["id"]);
@@ -222,6 +255,7 @@ namespace CallAugger.Utilities.DataBase
                 connection.Close();
             }
 
+            
             return users;
         }
 
@@ -253,6 +287,7 @@ namespace CallAugger.Utilities.DataBase
                     pharmacy.Zip     = reader["Zip"].ToString();
                     pharmacy.ContactName1 = reader["ContactName1"].ToString();
                     pharmacy.ContactName2 = reader["ContactName2"].ToString();
+                    pharmacy.Anniversary  = reader["Anniversary"].ToString();
                     pharmacy.PrimaryPhoneNumber = reader["PrimaryPhoneNumber"].ToString();
 
                     if (pharmacy.PrimaryPhoneNumber != null)
@@ -267,31 +302,7 @@ namespace CallAugger.Utilities.DataBase
                 connection.Close();
             }
 
-            return pharmacies;
-        }
-
-        private PhoneNumber FindPhoneNumber(SQLiteConnection connection, string primaryPhoneNumber)
-        {
-            PhoneNumber phoneNumber = new PhoneNumber();
-
-            SQLiteCommand command = new SQLiteCommand
-                (QueryStore.SelectAllPhoneNumbers + " WHERE Number = @Number", connection);
-
-            command.Parameters.AddWithValue("@Number", primaryPhoneNumber);
-
-            SQLiteDataReader reader = command.ExecuteReader();
-
-            while (reader.Read())
-            {
-                phoneNumber.id = Convert.ToInt32(reader["id"]);
-                phoneNumber.Number = reader["Number"].ToString();
-                phoneNumber.PharmacyID = Convert.ToInt32(reader["PharmacyID"]);
-
-
-                phoneNumber.AddCalls(GetCallRecordsForPhoneNumber(connection, phoneNumber.id));
-            }
-
-            return phoneNumber;
+            return pharmacies.OrderByDescending(pharmacy => pharmacy.TotalDuration).ToList();
         }
 
         public List<PhoneNumber> GetAllPhoneNumbers()
@@ -322,102 +333,9 @@ namespace CallAugger.Utilities.DataBase
                 connection.Close();
             }
 
-            return phoneNumbers;
+            return phoneNumbers.OrderByDescending(number => number.TotalDuration).ToList();
         }
-
-        public List<PhoneNumber> GetPhoneNumbersForPharmacy(SQLiteConnection connection, int pharmacyID)
-        {
-            List<PhoneNumber> phoneNumbers = new List<PhoneNumber>();
-
-            SQLiteCommand command = new SQLiteCommand
-                (QueryStore.SelectAllPhoneNumbers + " WHERE PharmacyID = @PharmacyID", connection);
-
-            command.Parameters.AddWithValue("@PharmacyID", pharmacyID);
-
-
-            using (SQLiteDataReader reader = command.ExecuteReader())
-            {
-                while (reader.Read())
-                {
-                    PhoneNumber phoneNumber = new PhoneNumber();
-
-                    phoneNumber.id = Convert.ToInt32(reader["id"]);
-                    phoneNumber.Number = reader["Number"].ToString();
-                    phoneNumber.PharmacyID = Convert.ToInt32(reader["PharmacyID"]);
-
-                    phoneNumber.AddCalls(GetCallRecordsForPhoneNumber(connection, phoneNumber.id));
-                    phoneNumbers.Add(phoneNumber);
-                }
-            }
-
-            return phoneNumbers;
-        }
-
-        public List<CallRecord> GetCallRecordsForPhoneNumber(SQLiteConnection connection, int phonenumberID)
-
-        {
-            List<CallRecord> callRecords = new List<CallRecord>();
-
-            using (SQLiteCommand command = new SQLiteCommand(QueryStore.SelectAllCallRecords + " WHERE PhoneNumberID = @PhoneNumberID", connection))
-            {
-                command.Parameters.AddWithValue("@PhoneNumberID", phonenumberID);
-                using (SQLiteDataReader reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        CallRecord callRecord = new CallRecord();
-
-                        callRecord.id = Convert.ToInt32(reader["id"]);
-                        callRecord.UserID = Convert.ToInt32(reader["UserID"]);
-                        callRecord.PhoneNumberID = Convert.ToInt32(reader["PhoneNumberID"]);
-                        callRecord.CallType = reader["CallType"].ToString();
-                        callRecord.Duration = Convert.ToInt32(reader["Duration"]);
-                        callRecord.Time = Convert.ToDateTime(reader["Time"]);
-                        callRecord.UserName = reader["UserName"].ToString();
-                        callRecord.UserExtention = reader["UserExtention"].ToString();
-                        callRecord.TransferUser = reader["TransferUser"].ToString();
-                        callRecord.Caller = reader["Caller"].ToString();
-
-                        callRecords.Add(callRecord);
-                    }
-                }
-            }
-
-            return callRecords;
-        }
-
-        public List<CallRecord> GetCallRecordsForUser(SQLiteConnection connection, int userID)
-        {
-            List<CallRecord> callRecords = new List<CallRecord>();
-            using (SQLiteCommand command = new SQLiteCommand(QueryStore.SelectAllCallRecords + " WHERE UserID = @UserID", connection))
-            {
-                command.Parameters.AddWithValue("@UserID", userID);
-
-                using (SQLiteDataReader reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        CallRecord callRecord = new CallRecord();
-
-                        callRecord.id = Convert.ToInt32(reader["id"]);
-                        callRecord.UserID = Convert.ToInt32(reader["UserID"]);
-                        callRecord.PhoneNumberID = Convert.ToInt32(reader["PhoneNumberID"]);
-                        callRecord.CallType = reader["CallType"].ToString();
-                        callRecord.Duration = Convert.ToInt32(reader["Duration"]);
-                        callRecord.Time = Convert.ToDateTime(reader["Time"]);
-                        callRecord.UserName = reader["UserName"].ToString();
-                        callRecord.UserExtention = reader["UserExtention"].ToString();
-                        callRecord.TransferUser = reader["TransferUser"].ToString();
-                        callRecord.Caller = reader["Caller"].ToString();
-
-                        callRecords.Add(callRecord);
-                    }
-                }
-            }
-
-            return callRecords;
-        }
-
+        
         public List<PhoneNumber> GetUnassignedPhoneNumbers()
         {
             List<PhoneNumber> phoneNumbers = new List<PhoneNumber>();
@@ -445,8 +363,135 @@ namespace CallAugger.Utilities.DataBase
                 connection.Close();
             }
 
+            return phoneNumbers.OrderByDescending(number => number.TotalDuration).ToList();
+        }
+
+
+        // Special Getters
+        private PhoneNumber FindPhoneNumber(SQLiteConnection connection, string primaryPhoneNumber)
+        {
+            PhoneNumber phoneNumber = new PhoneNumber();
+
+            SQLiteCommand command = new SQLiteCommand
+                (QueryStore.SelectAllPhoneNumbers + " WHERE Number = @Number", connection);
+
+            command.Parameters.AddWithValue("@Number", primaryPhoneNumber);
+
+            SQLiteDataReader reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                phoneNumber.id = Convert.ToInt32(reader["id"]);
+                phoneNumber.Number = reader["Number"].ToString();
+                phoneNumber.PharmacyID = Convert.ToInt32(reader["PharmacyID"]);
+
+
+                phoneNumber.AddCalls(GetCallRecordsForPhoneNumber(connection, phoneNumber.id));
+            }
+
+            return phoneNumber;
+        }
+
+        public List<PhoneNumber> GetPhoneNumbersForPharmacy(SQLiteConnection connection, int pharmacyID)
+        {
+
+            List<PhoneNumber> phoneNumbers = new List<PhoneNumber>();
+
+            SQLiteCommand command = new SQLiteCommand
+                (QueryStore.SelectAllPhoneNumbers + " WHERE PharmacyID = @PharmacyID", connection);
+
+            command.Parameters.AddWithValue("@PharmacyID", pharmacyID);
+
+
+            using (SQLiteDataReader reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    PhoneNumber phoneNumber = new PhoneNumber();
+
+                    phoneNumber.id = Convert.ToInt32(reader["id"]);
+                    phoneNumber.Number = reader["Number"].ToString();
+                    phoneNumber.PharmacyID = Convert.ToInt32(reader["PharmacyID"]);
+
+                    phoneNumber.AddCalls(GetCallRecordsForPhoneNumber(connection, phoneNumber.id));
+                    phoneNumbers.Add(phoneNumber);
+                }
+            }
+
             return phoneNumbers;
         }
+
+        public List<CallRecord> GetCallRecordsForPhoneNumber(SQLiteConnection connection, int phonenumberID)
+        {
+            DateRange dateRange = new DateRange().GetCurrentDateRange();
+            List<CallRecord> callRecords = new List<CallRecord>();
+
+            using (SQLiteCommand command = new SQLiteCommand(QueryStore.SelectAllCallRecords + " WHERE PhoneNumberID = @PhoneNumberID", connection))
+            {
+                command.Parameters.AddWithValue("@PhoneNumberID", phonenumberID);
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        CallRecord callRecord = new CallRecord();
+                        callRecord.Time = Convert.ToDateTime(reader["Time"]);
+
+                        if (dateRange.IsInRange(callRecord.Time) == false) continue;
+
+                        callRecord.id = Convert.ToInt32(reader["id"]);
+                        callRecord.CallType = reader["CallType"].ToString();
+                        callRecord.UserID = Convert.ToInt32(reader["UserID"]);
+                        callRecord.PhoneNumberID = Convert.ToInt32(reader["PhoneNumberID"]);
+                        callRecord.Duration = Convert.ToInt32(reader["Duration"]);
+                        callRecord.UserName = reader["UserName"].ToString();
+                        callRecord.UserExtention = reader["UserExtention"].ToString();
+                        callRecord.TransferUser = reader["TransferUser"].ToString();
+                        callRecord.Caller = reader["Caller"].ToString();
+
+                        callRecords.Add(callRecord);
+                    }
+                }
+            }
+
+            return callRecords;
+        }
+
+        public List<CallRecord> GetCallRecordsForUser(SQLiteConnection connection, int userID)
+        {
+            DateRange dateRange = new DateRange();
+            List<CallRecord> callRecords = new List<CallRecord>();
+            using (SQLiteCommand command = new SQLiteCommand(QueryStore.SelectAllCallRecords + " WHERE UserID = @UserID", connection))
+            {
+                command.Parameters.AddWithValue("@UserID", userID);
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        // if the call is not in the current date range skip it
+                        if (!dateRange.IsInRange(Convert.ToDateTime(reader["Time"]))) continue;
+
+                        CallRecord callRecord = new CallRecord();
+
+                        callRecord.id = Convert.ToInt32(reader["id"]);
+                        callRecord.UserID = Convert.ToInt32(reader["UserID"]);
+                        callRecord.PhoneNumberID = Convert.ToInt32(reader["PhoneNumberID"]);
+                        callRecord.CallType = reader["CallType"].ToString();
+                        callRecord.Duration = Convert.ToInt32(reader["Duration"]);
+                        callRecord.Time = Convert.ToDateTime(reader["Time"]);
+                        callRecord.UserName = reader["UserName"].ToString();
+                        callRecord.UserExtention = reader["UserExtention"].ToString();
+                        callRecord.TransferUser = reader["TransferUser"].ToString();
+                        callRecord.Caller = reader["Caller"].ToString();
+
+                        callRecords.Add(callRecord);
+                    }
+                }
+            }
+
+            return callRecords;
+        }
+
 
 
         // Single Record Getters
@@ -524,11 +569,37 @@ namespace CallAugger.Utilities.DataBase
                 pharmacy.Zip = reader["Zip"].ToString();
                 pharmacy.ContactName1 = reader["ContactName1"].ToString();
                 pharmacy.ContactName2 = reader["ContactName2"].ToString();
+                pharmacy.Anniversary = reader["Anniversary"].ToString();
                 pharmacy.PrimaryPhoneNumber = reader["PrimaryPhoneNumber"].ToString();
             }
            
 
             return pharmacy;
+        }
+
+        public String GetPharmacyName(int pharmacyID)
+        {
+            if (pharmacyID == 0)return "";
+            string pharmacyName = "";
+
+            using (SQLiteConnection connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+                SQLiteCommand command = new SQLiteCommand
+                    (QueryStore.SelectAllPharmacies + " WHERE id = @id", connection);
+
+                command.Parameters.AddWithValue("@id", pharmacyID);
+
+                SQLiteDataReader reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    pharmacyName = reader["Name"].ToString();
+                }
+
+                connection.Close();
+            }
+
+            return pharmacyName;
         }
 
         public PhoneNumber GetPhoneNumber(SQLiteConnection connection, int phoneNumberID)
@@ -553,8 +624,7 @@ namespace CallAugger.Utilities.DataBase
 
             return phoneNumber;
         }
-
-
+        
 
 
         // Duplicate Entry Checks
@@ -692,7 +762,18 @@ namespace CallAugger.Utilities.DataBase
 
         }
 
-      
+        public void UpdatePhoneNumberPharmacyID(PhoneNumber phoneNumber, int pharmacyID)
+        {
+            // remove this phone number from the pharmacy and add it back to the list of unassigned
+            using (SQLiteConnection connection = new SQLiteConnection(ConfigurationManager.ConnectionStrings["Default"].ConnectionString))
+            {
+                connection.Open();
+                UpdatePhoneNumberPharmacyID(connection, phoneNumber, pharmacyID);
+                connection.Close();
+            }
+        }
+
+
         // Delete Record
         internal void DeleteCall(CallRecord call)
         {
@@ -709,5 +790,6 @@ namespace CallAugger.Utilities.DataBase
                 }
             }
         }
+
     }
 }

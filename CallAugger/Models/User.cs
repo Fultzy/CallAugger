@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Microsoft.Office.Interop.Word;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,31 +15,45 @@ namespace CallAugger
         public string Extention { get; set; }
 
         public int TotalCalls = 0;
-        public int TotalInboundCalls = 0;
-        public int TotalOutboundCalls = 0;
+        public int TotalDuration = 0;
 
-        public int TotalCallTime = 0;
-        public int TotalInboundTalkTime = 0;
-        public int TotalOutboundTalkTime = 0;
+        public int InboundCalls = 0;
+        public int InboundDuration = 0;
+
+        public int OutboundCalls = 0;
+        public int OutboundDuration = 0;
+
+        public int CallsOver30 = 0;
+        public int CallsOver60 = 0;
+
+        public int WeekendCalls = 0;
+        public int InternalCalls = 0;
+
 
         public List<CallRecord> CallRecords { get; set; } = new List<CallRecord>();
-
 
         public void AddCall(CallRecord callRecord)
         {
 
             TotalCalls++;
-            TotalCallTime += callRecord.Duration;
+            TotalDuration += callRecord.Duration;
+
+            if (callRecord.Duration > 1800) CallsOver30++;
+            if (callRecord.Duration > 3600) CallsOver60++;
+            
+            if (callRecord.IsWeekend() && callRecord.IsInternal() == false) WeekendCalls++;
+            if (callRecord.IsInternal()) InternalCalls++;
+
 
             if (callRecord.CallType == "Inbound call")
             {
-                TotalInboundCalls++;
-                TotalInboundTalkTime += callRecord.Duration;
+                InboundCalls++;
+                InboundDuration += callRecord.Duration;
             }
             else
             {
-                TotalOutboundCalls++;
-                TotalOutboundTalkTime += callRecord.Duration;
+                OutboundCalls++;
+                OutboundDuration += callRecord.Duration;
             }
 
             CallRecords.Add(callRecord);
@@ -51,12 +67,36 @@ namespace CallAugger
             }
         }
 
-        public string FormatedAverageCallTime()
+        public string AverageCallTime()
         {
-            double averageTime = (double)TotalCallTime / (double)TotalCalls;
+            if (TotalCalls == 0) return "0s";
+
+            double averageTime = (double)TotalDuration / (double)TotalCalls;
+            if (averageTime < 1) Console.WriteLine("OPPS!");
             int averageTimeInSeconds = Convert.ToInt32(averageTime);
 
             return FormatedDuration(averageTimeInSeconds);
+        }
+
+        public int AdjustedCalls()
+        {
+            return TotalCalls - InternalCalls - WeekendCalls;
+        }
+
+        public float AverageDuration()
+        {
+            if (TotalCalls == 0) return 0; // prevent divide by zero error
+            return TotalDuration / TotalCalls;
+        }
+
+        public string Over30Percentage()
+        {
+            return (float)CallsOver30 / (float)TotalCalls * 100 + "%";
+        }
+
+        public string Over60Percentage()
+        {
+            return (float)CallsOver60 / (float)TotalCalls * 100 + "%";
         }
 
         public (double, double, double) OverSixtyMinutesCallsPercentages()
@@ -82,12 +122,12 @@ namespace CallAugger
             }
             return (
                 Math.Round((double)overHourCalls / (double)TotalCalls * 100, 2),
-                Math.Round((double)overHourInboundCalls / (double)TotalInboundCalls * 100, 2),
-                Math.Round((double)overHourOutboundCalls / (double)TotalOutboundCalls * 100, 2)
+                Math.Round((double)overHourInboundCalls / (double)InboundCalls * 100, 2),
+                Math.Round((double)overHourOutboundCalls / (double)OutboundCalls * 100, 2)
                 );
         }
 
-        public (double, double, double) OverThirtyMinuteCallsPercentages()
+        public (double, double, double) OverThirtyMinutesCallsPercentages()
         {
             int overThirtyMinuteCalls = 0;
             int overThirtyMinuteInboundCalls = 0;
@@ -110,51 +150,63 @@ namespace CallAugger
             }
             return (
                 Math.Round((double)overThirtyMinuteCalls / (double)TotalCalls * 100, 2),
-                Math.Round((double)overThirtyMinuteInboundCalls / (double)TotalInboundCalls * 100, 2),
-                Math.Round((double)overThirtyMinuteOutboundCalls / (double)TotalOutboundCalls * 100, 2)
+                Math.Round((double)overThirtyMinuteInboundCalls / (double)InboundCalls * 100, 2),
+                Math.Round((double)overThirtyMinuteOutboundCalls / (double)OutboundCalls * 100, 2)
                 );
         }
 
         public string FormatedDuration(int duration)
         {
-            string formattedDuration = duration.ToString();
-
-            if (duration > 60 && duration < 3600)
-            {
-                formattedDuration = (duration / 60).ToString() + "m " + (duration % 60).ToString() + "s";
-            }
-            else if (duration >= 3600)
-            {
-                formattedDuration = (duration / 3600).ToString() + "h " + ((duration % 3600) / 60).ToString() + "m " + ((duration % 3600) % 60).ToString() + "s";
-            }
+            TimeSpan time = TimeSpan.FromSeconds(duration);
+            if (time.Hours == 0 && time.Days == 0)
+                return $"{time.Minutes}m {time.Seconds}s";
             else
-            {
-                formattedDuration = duration.ToString() + "s";
-            }
-
-            return formattedDuration;
+                return $"{time.Hours + (time.Days * 24)}h {time.Minutes}m {time.Seconds}s";
         }
 
-        public void WriteUserStats()
+        public void WriteUserStats(int callRecordCount = 0)
         {
             var pad = "      ";
 
-            Console.WriteLine($"{pad}               ~~~~~~~~~~ " + Name + " ~~~~~~~~~~\n");
+            var over30 = OverThirtyMinutesCallsPercentages();
+            var over60 = OverSixtyMinutesCallsPercentages();
 
-            Console.WriteLine($"{pad}      Total Calls: {TotalCalls}  ~  {FormatedDuration(TotalCallTime)}  ~  Average: {FormatedAverageCallTime()}\n");
-            
-            Console.WriteLine($"{pad}      Inbound Calls: {TotalInboundCalls}  ~  {FormatedDuration(TotalInboundTalkTime)}");
-            
-            Console.WriteLine($"{pad}     Outbound Calls: {TotalOutboundCalls}  ~  {FormatedDuration(TotalOutboundTalkTime)}\n");
-            
-            Console.WriteLine($"{pad} Over 30 Minute Calls: {OverThirtyMinuteCallsPercentages().Item1}%  ~  Inbound: {OverThirtyMinuteCallsPercentages().Item2}%  ~  Outbound: {OverThirtyMinuteCallsPercentages().Item3}%");
+            Console.WriteLine($"\n{pad}               ~~~~~~~~~~ " + Name + " ~~~~~~~~~~\n");
 
-            Console.WriteLine($"{pad} Over 60 Minute Calls: {OverSixtyMinutesCallsPercentages().Item1}%  ~  Inbound: {OverSixtyMinutesCallsPercentages().Item2}%  ~  Outbound: {OverSixtyMinutesCallsPercentages().Item3}%");
+            Console.WriteLine($"{pad}      Total Calls: {TotalCalls}  ~  {FormatedDuration(TotalDuration)}  ~  Average: {AverageCallTime()}\n");
+            
+            Console.WriteLine($"{pad}      Inbound Calls: {InboundCalls}  ~  {FormatedDuration(InboundDuration)}");
+            
+            Console.WriteLine($"{pad}     Outbound Calls: {OutboundCalls}  ~  {FormatedDuration(OutboundDuration)}");
+            Console.WriteLine($"{pad}      Weekend Calls: {WeekendCalls}  ~  Internal Calls: {InternalCalls}\n");
+            
+            Console.WriteLine($"{pad} Over 30 Minute Calls: {over30.Item1}%  ~  Inbound: {over30.Item2}%  ~  Outbound: {over30.Item3}%");
+
+            Console.WriteLine($"{pad} Over 60 Minute Calls: {over60.Item1}%  ~  Inbound: {over60.Item2}%  ~  Outbound: {over60.Item3}%");
+            
+
+            Console.WriteLine($"\n{pad}      Top {callRecordCount} Calls:");
+            foreach (CallRecord call in CallRecords.OrderByDescending(call => call.Duration).Take(callRecordCount))
+            {
+                Console.WriteLine($"{pad} {call.FormatedDuration(call.Duration)}  ~  {call.Time}  ~  {call.CallType.Split(' ')[0]}  ~  {call.Caller}");
+            }
         }
 
         public string InlineUserInfo()
         {
-            return $"{Name} - Total Calls: {TotalCalls} - Total Duration: {FormatedDuration(TotalCallTime)}";
+            return $"{Name} - Total Calls: {TotalCalls} - Total Duration: {FormatedDuration(TotalDuration)}";
         }
+
+        public string NameL()
+        {
+            if (Name == null) return "Invalid Name";
+            if (Name == "-- AVERAGE --") return Name;
+            if (Name == "-- TOTAL --") return Name;
+
+            string[] name = Name.Split(' ');
+            return name[0] + " " + name[1][0];
+        }
+
     }
+
 }

@@ -48,14 +48,18 @@ namespace CallAugger
             }
         }
 
-        public float AverageDuration(int TotalDuration, int TotalCalls)
+        public float AverageDuration()
         {
+            if (TotalCalls == 0) return 0;
+            if (TotalDuration == 0) return 0;
             return TotalDuration / TotalCalls;
         }
 
         public string FormatedPhoneNumber()
         {
+            if (Number == null) return "Invalid Number"; ;
             string formattedNumber = Number;
+
             if (Number.Length == 10)
             {
                 formattedNumber = "(" + Number.Substring(0, 3) + ") " + Number.Substring(3, 3) + "-" + Number.Substring(6, 4);
@@ -66,26 +70,16 @@ namespace CallAugger
 
         public string FormatedDuration(int duration)
         {
-            string formattedDuration = duration.ToString();
-
-            if (duration > 60 && duration < 3600)
-            {
-                formattedDuration = (duration / 60).ToString() + "m " + (duration % 60).ToString() + "s";
-            }
-            else if (duration >= 3600)
-            {
-                formattedDuration = (duration / 3600).ToString() + "h " + ((duration % 3600) / 60).ToString() + "m " + ((duration % 3600) % 60).ToString() + "s";
-            }
-            else 
-            { 
-                formattedDuration = duration.ToString() + "s";
-            }
-
-            return formattedDuration;
+            TimeSpan time = TimeSpan.FromSeconds(duration);
+            if (time.Hours == 0)
+                return $"{time.Minutes}m {time.Seconds}s";
+            else
+                return $"{time.Hours + (time.Days * 24)}h {time.Minutes}m {time.Seconds}s";
         }
 
         public void WriteCallerStats(int topCallCount = 0)
         {
+            if (Number == null) return;
             var pad = "       ";
             Console.WriteLine(pad + $"\n    ~~~~~~~~~ " + FormatedPhoneNumber() + " ~~~~~~~~~~\n");
 
@@ -96,22 +90,30 @@ namespace CallAugger
 
             if (topCallCount > 0)
             {
-                Console.WriteLine(pad + $"Top {topCallCount} calls:");
+                Console.WriteLine(pad + $"Top {topCallCount} calls:             Type:          Duration:        Rep:");
 
                 int callCount = 0;
                 foreach (CallRecord call in CallRecords.OrderByDescending(pn => pn.Duration))
                 {
-                    
                     callCount++;
-                    Console.WriteLine("   {0}: {1}  -  {2}  -  {3}  -  {4}", callCount, call.Time, call.CallType, FormatedDuration(call.Duration), call.UserName);
+                    string idPadding = callCount > 9 ? "" : " ";
+
+                    Console.WriteLine(pad + call.InLineInfo());
                     if (callCount >= topCallCount) break;
                 }
             }
         }
 
-        public string InlineCallerStatString()
+        public string InlineCallerStatString(int paddingRequest = 0)
         {
-            return $"{FormatedPhoneNumber()} - Calls: {TotalCalls} : {FormatedDuration(TotalDuration)}";
+            // add a space to callspadding for the paddingrequest
+            string callsPadding = "";
+            for (int i = 0; i < paddingRequest; i++)
+            {
+                callsPadding += " ";
+            }
+
+            return $"{FormatedPhoneNumber()}    -    {TotalCalls}" + callsPadding + $"      -      {FormatedDuration(TotalDuration)}";
         }
 
     }

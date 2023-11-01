@@ -62,7 +62,6 @@ namespace CallAugger.Controllers.DataImporters
         }
 
 
-        // Create a list of call records from a list of ExcelReaders
         public List<CallRecord> CreateCallRecords(List<List<string>> callData)
         {
             // Create Data Store
@@ -111,10 +110,6 @@ namespace CallAugger.Controllers.DataImporters
                     // these are the phone numbers used during this call
                     var from = row[headers["From"]];
                     var to = row[headers["To"]];
-
-                    // if both to and from are only 3 digits long disregard this row
-                    if (from.Length == 3 && to.Length == 3)
-                        continue;
 
                     // if the number is longer than 10 digits, remove the first digit
                     if (from.Length > 10)
