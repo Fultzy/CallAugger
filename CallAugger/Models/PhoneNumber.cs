@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 
 namespace CallAugger
 {
@@ -104,16 +103,15 @@ namespace CallAugger
             }
         }
 
-        public string InlineCallerStatString(int paddingRequest = 0)
+        public string InlineCallerStatString(int callLengthRequest = 0)
         {
-            // add a space to callspadding for the paddingrequest
-            string callsPadding = "";
-            for (int i = 0; i < paddingRequest; i++)
+            string callPadding = "";
+            for (int i = TotalCalls.ToString().Length; i < callLengthRequest; i++)
             {
-                callsPadding += " ";
+                callPadding += " ";
             }
 
-            return $"{FormatedPhoneNumber()}    -    {TotalCalls}" + callsPadding + $"      -      {FormatedDuration(TotalDuration)}";
+            return $"{FormatedPhoneNumber()}    ~    {callPadding}{TotalCalls}    ~    {FormatedDuration(TotalDuration)}";
         }
 
     }

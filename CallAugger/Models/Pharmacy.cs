@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace CallAugger
 {
@@ -77,9 +76,21 @@ namespace CallAugger
             Console.WriteLine(PharmacyInfoString());
         }
 
-        public string PharmacyInfoString()
+        public string PharmacyInfoString(int nameLengthRequest = 0, int callLengthRequest = 0)
         {
-            return $"{Name} - {FormatedPhoneNumber(PrimaryPhoneNumber)} - {Npi} -   {TotalCalls}   -   {FormatedDuration(TotalDuration)}";
+            string namePadding = "";
+            for (int i = Name.Length; i < nameLengthRequest; i++)
+            {
+                namePadding += " ";
+            }
+
+            string callPadding = "";
+            for (int i = TotalCalls.ToString().Length; i < callLengthRequest; i++)
+            {
+                callPadding += " ";
+            }
+
+            return $"{Name}{namePadding} ~ {FormatedPhoneNumber(PrimaryPhoneNumber)} ~ {Npi} ~   {callPadding}{TotalCalls}   ~  {FormatedDuration(TotalDuration)}";
         }
 
         public void AddPhoneNumber(PhoneNumber newPhoneNumber)

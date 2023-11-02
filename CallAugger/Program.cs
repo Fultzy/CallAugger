@@ -7,17 +7,8 @@ using CallAugger.Controllers.DataImporters;
 using CallAugger.Controllers.Parsers;
 using CallAugger.Controllers.Generators;
 using CallAugger.Utilities.DataBase;
-using System.Data.SQLite;
-using System.Configuration;
 using CallAugger.Settings;
-using System.Net.Http.Headers;
-using System.Management.Instrumentation;
-using System.Runtime.InteropServices;
 using CallAugger.Utilities.Validators;
-using System.Security.Cryptography;
-using Microsoft.Office.Interop.Excel;
-using System.Security.Policy;
-using System.Diagnostics;
 
 namespace CallAugger
 {
@@ -685,10 +676,7 @@ namespace CallAugger
 
                 foreach (PhoneNumber pn in searchResults.Take(29))
                 {
-                    // find the diference in length of the call record cound and the total calls of this phone number
-                    int callRecordCountDifference = callsCount.ToString().Length - pn.CallRecords.Count().ToString().Length;
-                    searchPhoneNumberMenu.Options.Add(pn.InlineCallerStatString(callRecordCountDifference));
-                    Console.WriteLine(callRecordCountDifference);
+                    searchPhoneNumberMenu.Options.Add(pn.InlineCallerStatString(callsCount.ToString().Length));
                 }
 
                 searchPhoneNumberMenu.WriteProgramTitle();
@@ -736,7 +724,6 @@ namespace CallAugger
         {
             var searchTerm = "";
             SearchUtilities ISearchUtility = new SearchUtilities();
-            var formatedNamesPharmacies = PadPharmacyInfoStringLength(allPharmacies);
             Pharmacy selectedPharmacy = null;
 
             bool didSelectPharmacy = false;
@@ -744,31 +731,60 @@ namespace CallAugger
             {
                 // Use the searchTerm to find matching pharmacies
                 if (searchTerm.Length < 1) searchTerm = "";
+                var searchResults = ISearchUtility.ListMatchingPharmacies(searchTerm, allPharmacies);
 
-                var searchResults = ISearchUtility.ListMatchingPharmacies(searchTerm, formatedNamesPharmacies);
+
+                // no results found message
                 string menuName = phoneNumberstr.Length > 0 ? $"Search Pharmacies for {phoneNumberstr}: {searchTerm}" : $"Search Pharmacies: {searchTerm}";
 
-                // create a CLI menu to select a pharmacy showing the top 5 unassigned phonenumbers
+                
+
+                // find the longest name and calls length
+                var results = searchResults.Take(29);
+
+                int longestNameLength = 0;
+                int longestCallsLength = 0;
+                if (searchResults.Count > 0)
+                {
+                    longestNameLength = results.OrderByDescending(ph => ph.Name.Length).First().Name.Length;
+                    longestCallsLength = results.OrderByDescending(ph => ph.TotalCalls.ToString().Length).First().TotalCalls.ToString().Length;
+                }
+
+
+                // create and pad the Header
+                string namePadding = "";
+                for (int i = 0; i < (longestNameLength - 3); i++)
+                {
+                    namePadding += " ";
+                }
+                string header = $"Name: {namePadding} PhoneNumber:       Npi:       Calls:   Phone Time:";
+                
+
+                // create a CLI menu to select a pharmacy
                 var searchPharmacyMenu = new CliMenu()
                 {
                     OptionPadding = 3,
                     Searching = true,
                     MenuName = menuName,
-                    Header = "Name:                                                 PhoneNumber:       Npi:       Calls:   Phone Time:",
+                    Header = header,
                     Prompt = "Enter a search term or select a pharmacy: ",
                     Help = "Learn More",
                     Exit = "Back to Main Menu"
                 };
 
-                foreach(Pharmacy ph in searchResults.Take(29))
+
+                // add the options to the menu
+                foreach (Pharmacy ph in results)
                 {
-                    searchPharmacyMenu.Options.Add(ph.PharmacyInfoString());
+                    searchPharmacyMenu.Options.Add(ph.PharmacyInfoString(longestNameLength, longestCallsLength));
                 }
 
-                Console.Clear();
+
+                // write the menu and get the user input
                 searchPharmacyMenu.WriteProgramTitle();
                 string searchInput = searchPharmacyMenu.WriteMenu();
                 int optionSelection = searchPharmacyMenu.CaseOptionNumber(searchInput);
+
 
                 // return the selected pharmacy or search again using a different term
                 if (searchInput.ToLower() == "exit") return null;
@@ -805,27 +821,7 @@ namespace CallAugger
 
 
         ///////////////////////////////////// Menu Formatting Helpers //////////
-        static List<Pharmacy> PadPharmacyInfoStringLength(List<Pharmacy> pharmacies)
-        {
-            // find the longest string in the top 10 results
-            int longestStringLength = 0;
-            foreach (Pharmacy ph in pharmacies)
-            {
-                // split the string at "-"
-                int nameLength = ph.PharmacyInfoString().Split('-')[0].Length;
-                if (nameLength > longestStringLength) longestStringLength = nameLength;
-            }
-
-            // pad the strings to be the same length
-            foreach (Pharmacy ph in pharmacies)
-            {
-                string[] splitString = ph.PharmacyInfoString().Split('-');
-                string paddedString = splitString[0].PadRight(longestStringLength, ' ');
-                ph.Name = paddedString;
-            }
-
-            return pharmacies;
-        }
+        
 
     }
 }
