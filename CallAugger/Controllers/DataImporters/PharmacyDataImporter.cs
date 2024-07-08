@@ -1,119 +1,266 @@
-﻿using CallAugger.Utilities;
-using CallAugger.Utilities.DataBase;
+﻿using CallAugger.Readers;
+using CallAugger.Utilities;
+using CallAugger.Utilities.CliInterface;
+using CallAugger.Utilities.Sqlite;
+using CallAugger.Utilities.Validators;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data.SQLite;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Runtime.Remoting.Messaging;
 
-namespace CallAugger.Controllers.DataImporters
+namespace CallAugger.DataImporters
 {
     internal class PharmacyDataImporter : DataImporter
     {
         ///////////////////////////////////////////////////////////////
         //  This class is responsible for reading in call record data
         //  from a file and creating a list of CallRecord objects.
-        //  This class is responsible for reading in call record data
 
+        public Dictionary<string, int> Headers = null;
 
-        // open and read in Pharmacy data into a list of lists
-        public List<List<string>> ReadInPharmacyData(string path)
+        public List<List<string>> ReadInPharmacyData()
         {
-            // get the path to the call records
-            string pharmacyDirPath = path + @"\Data\Pharmacy Info";
+            var pharmaData = new List<List<string>>();
 
-
-            // get the names of all the files in the call records directory
+            // get the path to the Pharmacy Info
+            string pharmacyDirPath = Directory.GetCurrentDirectory() + @"\Data\Pharmacy Info";
             var PharmacyFiles = Directory.EnumerateFiles(pharmacyDirPath);
-            var data = new List<List<string>>();
 
             if (PharmacyFiles.Count() == 0) return null;
 
-            ///////////////////////////////////////////////
-            // Read Each File in the CallRecords Directory
-            foreach (string currentFile in PharmacyFiles)
+            foreach (string filePath in PharmacyFiles)
             {
-                string fileName = currentFile.Substring(pharmacyDirPath.Length);
-                var fullFilePath = pharmacyDirPath + fileName;
-
-
-                if (fileName.Contains(".csv") || fileName.Contains(".xlsx"))
-                {
-                    // a Whole lotta bullshit
-                    var xReader = new ExcelReader(fullFilePath);
-                    data.AddRange(xReader.ReadData());
-                    xReader.CloseReader();
-
-
-                    // move the file into the archive folder
-                    var archivePath = path + @"\Data\Pharmacy Info\Archive";
-                    File.Move(fullFilePath, archivePath + fileName);
-                }
-                else
-                {
-                    throw new Exception($"Error: {fileName} is not a .csv or .xlsx file.");
-                }
+                var newData = ProcessFile(filePath);
+                pharmaData.AddRange(newData);
             }
             
-            return data;
+            return pharmaData;
         }
 
 
-        // Create a list of pharmacies from the workbooks
-        public List<Pharmacy> CreatePharmacyRecords(List<List<string>> pharmaData)
+        private List<List<string>> ProcessFile(string filePath)
         {
-            // Create Data store
-            SQLiteHandler dbHandle = new SQLiteHandler();
-            Console.Write(" Checking DB for new Entries...");
+            string fileName = filePath.Substring(filePath.LastIndexOf(@"\") + 1);
 
+            Console.WriteLine($"\nImporting Pharmacy File : {fileName}...");
+            Logger.Importing($"Importing Pharmacy File : {fileName}...");
 
-            // the first row in call data contains headers.
-            var headers = new Dictionary<string, int>();
-            var headerRow = pharmaData[0];
-            for (int i = 0; i < headerRow.Count; i++)
+            if (fileName.Contains(".csv") || fileName.Contains(".xlsx"))
             {
-                headers.Add(headerRow[i], i);
+                // a Whole lotta bullshit
+                var excelReader = new ExcelReader(filePath);
+                var rawdata = excelReader.ReadData();
+
+                // Standarize Data Formatting
+                var thisHeader = HeaderHandler.GetHeaderFromList(rawdata[0]);
+                if (Headers == null && HeaderValidator.IsValidCallTrackerHeader(thisHeader))
+                {
+                    Headers = thisHeader;
+                }
+
+                // Sort the data to match the Global header
+                var sortedData = HeaderHandler.SortDataToHeader(rawdata, Headers);
+
+                excelReader.CloseReader();
+                excelReader = null;
+
+                // move the file into the archive folder
+                var archivePath = Path.GetDirectoryName(filePath) + @"\Archive";
+                File.Move(filePath, archivePath + fileName);
+                
+                return sortedData;
             }
+            else
+            {
+                var message = $"!!ERROR!! : {fileName} is not a .csv or .xlsx file.";
+                throw new Exception(Logger.Error(Logger.Importing(message)));
+            }
+        }
+
+        
+        public List<Pharmacy> ImportPharmacyData(List<List<string>> pharmaData, SQLiteHandler dbHandle)
+        {
+            var startTime = DateTime.Now;
+            int max = pharmaData.Count - 1;
+            ProgressBarUtility.WriteProgressBar(0);
+
+            List<Pharmacy> pharmacies = new List<Pharmacy>();
 
             using (SQLiteConnection connection = new SQLiteConnection(ConfigurationManager.ConnectionStrings["Default"].ConnectionString))
             {
                 connection.Open();
 
-                for (int rowNum = 1; rowNum < pharmaData.Count; rowNum++)
+                for (int rowNum = 1; rowNum < pharmaData.Count - 1; rowNum++)
                 {
+                    var row = pharmaData[rowNum];
 
-                    ///////////////////////////////////////////////
-                    // Create a Pharmacy object
-                    var pharmacy = new Pharmacy();
+                    Pharmacy pharmacy = CreatePharmacy(row);
+                    pharmacy = dbHandle.InsertPharmacy(connection, pharmacy);
+
+                    Logger.Importing($"Successfully Added Pharmacy : {pharmacy.InlineDetails()}");
+
+                    // create a Primary Phone Number object
+                    if (pharmacy.PrimaryPhoneNumber == null)
                     {
-                        pharmacy.Name = pharmaData[rowNum][headers["Pharmacy Name"]];
-                        pharmacy.Npi = pharmaData[rowNum][headers["NPI #"]];
-                        pharmacy.Dea = pharmaData[rowNum][headers["DEA #"]];
-                        pharmacy.Ncpdp = pharmaData[rowNum][headers["NCPDP #"]];
-                        pharmacy.Address = pharmaData[rowNum][headers["Address"]];
-                        pharmacy.City = pharmaData[rowNum][headers["City"]];
-                        pharmacy.State = pharmaData[rowNum][headers["State"]];
-                        pharmacy.Zip = pharmaData[rowNum][headers["Zip"]];
-                        pharmacy.ContactName1 = pharmaData[rowNum][headers["Contact 1 Name"]];
-                        pharmacy.ContactName2 = pharmaData[rowNum][headers["Contact 2 Name"]];
-                        pharmacy.Anniversary = pharmaData[rowNum][headers["Rx Anniversary"]];
-                        pharmacy.PrimaryPhoneNumber = pharmaData[rowNum][headers["Phone # (no dashes)"]];
+                        var primaryPhoneNumber = CreatePrimaryPhoneNumber(connection, pharmacy);
+                        primaryPhoneNumber = dbHandle.InsertPhoneNumber(connection, primaryPhoneNumber);
+                        pharmacy.AddPhoneNumber(primaryPhoneNumber);
+
+                        Logger.Importing($"Successfully Added Primary Phone Number : {primaryPhoneNumber.InlineDetails()}");
                     }
 
-                    dbHandle.InsertPharmacy(connection, pharmacy);
+                    // create a Fax Number object
+                    if (pharmacy.FaxNumber == null)
+                    {
+                        var faxNumber = CreateFaxNumber(connection, pharmacy);
+                        faxNumber = dbHandle.InsertPhoneNumber(connection, faxNumber);
+                        pharmacy.AddPhoneNumber(faxNumber);
+
+                        Logger.Importing($"Successfully Added Fax Number : {faxNumber.InlineDetails()}");
+                    }
+
+                    pharmacies.Add(pharmacy);
+
+                    ProgressBarUtility.WriteProgressBar(rowNum * 100 / max, true);
                 }
 
                 connection.Close();
             }
 
-            // Text For Progress Status Updates
-            Console.Write("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b");
-            Console.Write(" ~ {0} Total Pharmacies in file", pharmaData.Count - 1);
+            var endTime = DateTime.Now;
+            var totalTime = endTime - startTime;
+            var roundedSeconds = Math.Round(totalTime.TotalSeconds, 2);
 
-            return dbHandle.GetAllPharmacies();
+            ProgressBarUtility.WriteProgressBar(100, true);
+            Console.Write($" ~ {max} Pharmacies - Took {roundedSeconds}s\n");
+            return pharmacies;
         }
+
+
+        private Pharmacy CreatePharmacy(List<string> row)
+        {
+            var pharmacy = new Pharmacy();
+            try
+            {
+                // Remove any commas from the name
+                string phName = row[Headers["Pharmacy Name"]];
+                if (phName.Contains(",")) phName = phName.Replace(",", " ");
+
+                pharmacy.Name = phName;
+                pharmacy.Npi = row[Headers["NPI #"]];
+                pharmacy.Dea = row[Headers["DEA #"]];
+                pharmacy.Ncpdp = row[Headers["NCPDP #"]];
+                pharmacy.Address = row[Headers["Address"]];
+                pharmacy.City = row[Headers["City"]];
+                pharmacy.State = row[Headers["State"]];
+                pharmacy.Zip = row[Headers["Zip"]];
+
+                // if contact names contains a coma replace it with &
+                string name1 = row[Headers["Contact 1 Name"]];
+                if (name1 == "" || name1 == null)
+                    pharmacy.ContactName1 = "null";
+                else if (name1.Contains(","))
+                    pharmacy.ContactName1 = name1.Replace(",", "&");
+                else
+                    pharmacy.ContactName1 = name1;
+
+                string name2 = row[Headers["Contact 2 Name"]];
+                if (name2 == "" || name2 == null)
+                    pharmacy.ContactName2 = "null";
+                else if (name2.Contains(","))
+                    pharmacy.ContactName2 = name2.Replace(",", "&");
+                else
+                    pharmacy.ContactName2 = name2;
+
+                pharmacy.Anniversary = row[Headers["Rx Anniversary"]];
+                pharmacy.PrimaryPhoneNumber = row[Headers["Phone # (no dashes)"]];
+                pharmacy.FaxNumber = row[Headers["Fax # (no dashes)"]];
+
+                return pharmacy;
+            }
+            catch (Exception ex)
+            {
+                var message1 = $"An error occurred while creating pharmacy: {ex.Message}";
+                var message2 = $"Pharmacy: {pharmacy.InlineDetails()}";
+
+                // ErrorMenu.For(message1, message2);
+                throw new Exception(Logger.Error(Logger.Importing(message1 + "\n" + message2)));
+            }
+        }
+
+
+        private PhoneNumber CreatePrimaryPhoneNumber(SQLiteConnection connection, Pharmacy pharmacy)
+        {
+            PhoneNumber primaryPhoneNumber = new PhoneNumber();
+
+            try
+            {
+                if (PhoneNumberValidator.IsPhoneNumber(pharmacy.PrimaryPhoneNumber))
+                {
+                    primaryPhoneNumber.Number = pharmacy.PrimaryPhoneNumber;
+                    primaryPhoneNumber.PharmacyID = pharmacy.id;
+                    primaryPhoneNumber.State = pharmacy.State;
+                    primaryPhoneNumber.IsPrimary = true;
+
+                    Logger.Importing($"Added w/ Primary Phone Number : {primaryPhoneNumber.InlineDetails()}");
+
+                    return primaryPhoneNumber;
+                }
+                else
+                {
+                    var message = $"Primary Phone Number is not a valid phone number: {pharmacy.PrimaryPhoneNumber}";
+                    throw new Exception(Logger.Error(Logger.Importing(message)));
+                }
+            }
+            catch (Exception ex)
+            {
+                var message1 = $"An error occurred while creating primary phone number: {ex.Message}";
+                var message2 = $"Pharmacy: {pharmacy.InlineDetails()}";
+                var message3 = $"Primary Phone Number: {primaryPhoneNumber.InlineDetails()}";
+
+                ErrorMenu.For(message1, message2, message3);
+                throw new Exception(Logger.Error(Logger.Importing(message1 + "\n" + message2 + "\n" + message3)));
+            }
+        }
+
+
+        private PhoneNumber CreateFaxNumber(SQLiteConnection connection, Pharmacy pharmacy)
+        {
+            if (pharmacy.FaxNumber == "") return null;
+            var faxNumber = new PhoneNumber();
+
+            try
+            {
+                if (PhoneNumberValidator.IsPhoneNumber(pharmacy.FaxNumber))
+                {
+                    
+                    faxNumber.Number = pharmacy.FaxNumber;
+                    faxNumber.PharmacyID = pharmacy.id;
+                    faxNumber.State = pharmacy.State;
+                    faxNumber.IsFax = true;
+                    
+                    Logger.Importing($"Added w/ Fax Number : {faxNumber.InlineDetails()}");
+
+                    return faxNumber;
+                }
+                else
+                {
+                    var message = $"Fax Number is not a valid phone number: {pharmacy.PrimaryPhoneNumber}";
+                    throw new Exception(Logger.Error(Logger.Importing(message)));
+                }
+            }
+            catch (Exception ex)
+            {
+                var message1 = $"An error occurred while creating Fax phone number: {ex.Message}";
+                var message2 = $"Pharmacy: {pharmacy.InlineDetails()}";
+                var message3 = $"Fax Phone Number: {faxNumber.InlineDetails()}";
+
+                ErrorMenu.For(message1, message2, message3);
+                throw new Exception(Logger.Error(Logger.Importing(message1 + "\n" + message2 + "\n" + message3)));
+            }
+        }
+
     }
 }

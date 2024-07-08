@@ -1,11 +1,10 @@
-﻿using Microsoft.Office.Interop.Word;
-using System;
+﻿using System;
 
 namespace CallAugger
 {
     public class CallRecord
     {
-        public int id { get; set; }
+        public int id = 0;
         public int PhoneNumberID { get; set; }
         public int UserID { get; set; }
 
@@ -13,6 +12,7 @@ namespace CallAugger
         public string CallType { get; set; }
         public int Duration { get; set; }
         public DateTime Time { get; set; }
+        public string State { get; set; }
 
 
         public string UserName { get; set; }
@@ -29,6 +29,21 @@ namespace CallAugger
             if (type == "Outbound call") type = "Outbound";
 
             return $"{Time.ToString("MM/dd/yyyy hh:mm tt")}  ~  {type}  ~  {FormatedDuration(Duration)}  ~  {UserName}";
+        }
+
+        internal object InlineDetails()
+        {
+            return $"DateTime:{Time.ToString("MM/dd/yyyy hh:mm tt")}, Type:{CallType}, Duration:{Duration}, UserID:{UserID}, Username:{UserName}, UserExt:{UserExtention}, TransferUser:{TransferUser}, CallerID:{PhoneNumberID}, Caller:{Caller}, State:{State}";
+        }
+
+        public string ToCsv()
+        {
+            return $"{Time.ToString("MM/dd/yyyy hh:mm tt")},{CallType},{Duration},{UserName},{UserExtention},{TransferUser},{Caller},{State}";
+        }
+
+        public void WriteInfo()
+        {
+            Console.WriteLine(InLineInfo());
         }
 
         public string FormatedDuration(int duration)
@@ -55,5 +70,6 @@ namespace CallAugger
             else
                 return false;
         }
+
     }
 }

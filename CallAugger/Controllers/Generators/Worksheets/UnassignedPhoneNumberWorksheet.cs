@@ -1,16 +1,14 @@
-﻿using CallAugger.Utilities.DataBase;
+﻿using CallAugger.Utilities.Sqlite;
 using CallAugger.Utilities;
 using Microsoft.Office.Interop.Excel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Drawing;
 using System.Data.SQLite;
 using System.Configuration;
 
-namespace CallAugger.Controllers.Generators.WorkSheets
+namespace CallAugger.Generators.Worksheets
 {
     internal class UnassignedPhoneNumberWorksheet
     {
@@ -103,7 +101,7 @@ namespace CallAugger.Controllers.Generators.WorkSheets
 
             // finish progress bar
             ProgressBarUtility.WriteProgressBar(100, true);
-            Console.WriteLine("\n");
+            Console.WriteLine(" Done!");
 
             return worksheet;
         }
@@ -143,14 +141,14 @@ namespace CallAugger.Controllers.Generators.WorkSheets
         {
             // add the record to the worksheet
             worksheet.Cells[row, 1] = phoneNumber.id;
-            worksheet.Cells[row, 2] = phoneNumber.FormatedPhoneNumber();
+            worksheet.Cells[row, 2] = phoneNumber.FormattedPhoneNumber();
             worksheet.Cells[row, 3] = phoneNumber.TotalCalls;
-            worksheet.Cells[row, 4] = phoneNumber.FormatedDuration(phoneNumber.TotalDuration);
-            worksheet.Cells[row, 5] = phoneNumber.FormatedDuration(Convert.ToInt32(phoneNumber.AverageDuration()));
+            worksheet.Cells[row, 4] = phoneNumber.FormattedTotalDuration();
+            worksheet.Cells[row, 5] = phoneNumber.FormattedAverageDuration();
             worksheet.Cells[row, 6] = phoneNumber.InboundCalls;
-            worksheet.Cells[row, 7] = phoneNumber.FormatedDuration(phoneNumber.InboundDuration);
+            worksheet.Cells[row, 7] = phoneNumber.FormattedInboundDuration();
             worksheet.Cells[row, 8] = phoneNumber.OutboundCalls;
-            worksheet.Cells[row, 9] = phoneNumber.FormatedDuration(phoneNumber.OutboundDuration);
+            worksheet.Cells[row, 9] = phoneNumber.FormattedOutboundDuration();
 
             return worksheet;
         }

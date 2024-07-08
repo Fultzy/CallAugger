@@ -1,21 +1,13 @@
-﻿using CallAugger.Controllers.Generators.Worksheets;
-using CallAugger.Controllers.Generators.WorkSheets;
+﻿using CallAugger.Generators.Worksheets;
 using CallAugger.Settings;
-using CallAugger.Utilities;
-using CallAugger.Utilities.DataBase;
+using CallAugger.Utilities.Sqlite;
 using Microsoft.Office.Interop.Excel;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 
 // C:\code\CallAugger\CallAugger\bin\Debug\Reports
-namespace CallAugger.Controllers.Generators
+namespace CallAugger.Generators
 {
     internal class ExcelGenerator
     {
@@ -25,20 +17,22 @@ namespace CallAugger.Controllers.Generators
         // values within it. Several Interfaces will assist in the 
         // creation of differently formatted worksheets. 
 
-        private string FilePath;
+        private readonly string FilePath;
 
         public ExcelGenerator(string filePath)
         {
-            this.FilePath = filePath + @"\Reports";
+            FilePath = filePath + @"\Reports";
         }
 
 
         public void CreateFullExcelReport(SQLiteHandler dbHandle)
         {
-            Application excelApp = new Microsoft.Office.Interop.Excel.Application();
-            excelApp.Visible = false;
-            excelApp.DisplayAlerts = false;
-           
+            Application excelApp = new Microsoft.Office.Interop.Excel.Application
+            {
+                Visible = false,
+                DisplayAlerts = false
+            };
+
             string fileName = @"\FullyAuggedReport_" + UniqueTimeCode();
             Workbook workbook = excelApp.Workbooks.Add(Type.Missing);
 
@@ -75,10 +69,12 @@ namespace CallAugger.Controllers.Generators
 
         public void CreateDetailedCallerReport(SQLiteHandler dbHandle)
         {
-            Application excelApp = new Microsoft.Office.Interop.Excel.Application();
-            excelApp.Visible = false;
-            excelApp.DisplayAlerts = false;
-            
+            Application excelApp = new Microsoft.Office.Interop.Excel.Application
+            {
+                Visible = false,
+                DisplayAlerts = false
+            };
+
             string fileName = @"\CallerReport_" + UniqueTimeCode();
             Workbook workbook = excelApp.Workbooks.Add(Type.Missing);
 
@@ -100,9 +96,11 @@ namespace CallAugger.Controllers.Generators
 
         public void CreateDetailedPharmacyReport(SQLiteHandler dbHandle)
         {
-            Application excelApp = new Microsoft.Office.Interop.Excel.Application();
-            excelApp.Visible = false;
-            excelApp.DisplayAlerts = false;
+            Application excelApp = new Microsoft.Office.Interop.Excel.Application
+            {
+                Visible = false,
+                DisplayAlerts = false
+            };
 
             string fileName = @"\PharamcyReport_" + UniqueTimeCode();
             Workbook workbook = excelApp.Workbooks.Add(Type.Missing);
@@ -115,6 +113,7 @@ namespace CallAugger.Controllers.Generators
             workbook.SaveAs(FilePath + fileName + ".xlsx");
             workbook.Close(false);
 
+
             excelApp.Quit();
 
             Marshal.ReleaseComObject(worksheet1);
@@ -125,11 +124,13 @@ namespace CallAugger.Controllers.Generators
 
         public void CreateSupportMetricsReport(SQLiteHandler dbHandle)
         {
-            Application excelApp = new Microsoft.Office.Interop.Excel.Application();
-            excelApp.Visible = false;
-            excelApp.DisplayAlerts = false;
+            Application excelApp = new Microsoft.Office.Interop.Excel.Application
+            {
+                Visible = false,
+                DisplayAlerts = false
+            };
 
-            
+
 
             // setup and create file
             string fileName = @"\SupportReport_" + UniqueTimeCode();
@@ -156,9 +157,11 @@ namespace CallAugger.Controllers.Generators
 
         public void CreateDetailedUserListingReport(SQLiteHandler dbHandle)
         {
-            Application excelApp = new Microsoft.Office.Interop.Excel.Application();
-            excelApp.Visible = false;
-            excelApp.DisplayAlerts = false;
+            Application excelApp = new Microsoft.Office.Interop.Excel.Application
+            {
+                Visible = false,
+                DisplayAlerts = false
+            };
 
             string fileName = @"\SupportRepListing" + UniqueTimeCode();
             Workbook workbook = excelApp.Workbooks.Add(Type.Missing);
@@ -180,9 +183,11 @@ namespace CallAugger.Controllers.Generators
 
         public void CreateUnassignedPhoneNumberReport(SQLiteHandler dbHandle)
         {
-            Application excelApp = new Microsoft.Office.Interop.Excel.Application();
-            excelApp.Visible = false;
-            excelApp.DisplayAlerts = false;
+            Application excelApp = new Microsoft.Office.Interop.Excel.Application
+            {
+                Visible = false,
+                DisplayAlerts = false
+            };
 
             string fileName = @"\UnassignedReport_" + UniqueTimeCode();
             Workbook workbook = excelApp.Workbooks.Add(Type.Missing);

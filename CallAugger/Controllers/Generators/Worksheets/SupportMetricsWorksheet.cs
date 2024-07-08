@@ -1,13 +1,13 @@
 ﻿using CallAugger.Settings;
 using CallAugger.Utilities;
-using CallAugger.Utilities.DataBase;
+using CallAugger.Utilities.Sqlite;
 using Microsoft.Office.Interop.Excel;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 
-namespace CallAugger.Controllers.Generators
+namespace CallAugger.Generators.Worksheets
 {
     internal class SupportMetricsWorksheet
     {
@@ -49,22 +49,20 @@ namespace CallAugger.Controllers.Generators
             Console.WriteLine("\nCreating Support Metric Report:");
 
             int repCount = 0;
-            Console.Write("\n  How many support reps to show?: ");
+            Console.Write("  How many support reps to show?: ");
             while (!int.TryParse(Console.ReadLine(), out repCount) || repCount <= 0)
             {
-                Console.Write("\nInvalid input. Please enter a number greater than 0: ");
+                Console.Write("Invalid input. Please enter a number greater than 0: ");
             }
 
             int rankCount = 0;
-            Console.Write("\n  How many ranked support reps?: ");
+            Console.Write("  How many ranked support reps? : ");
             while (!int.TryParse(Console.ReadLine(), out rankCount) || rankCount <= 0)
             {
-                Console.Write("\nInvalid input. Please enter a number greater than 0: ");
+                Console.Write("Invalid input. Please enter a number greater than 0: ");
             }
 
-
             // begin progress bar
-            Console.WriteLine("\n");
             ProgressBarUtility.WriteProgressBar(0);
 
 
@@ -109,15 +107,16 @@ namespace CallAugger.Controllers.Generators
             // remove all the ignored users
             users.RemoveAll(user => ignoreList.Any(ignored => ignored.Trim() == user.Name));
 
-
+            int userCtr = 0;
             foreach (var user in users.Take(repCount + 2)) // adding two for total and average users
             {
 
                 worksheet = AddUserMetrics(user, worksheet, row);
+                userCtr++;
                 row++;
 
                 // update the progress bar
-                ProgressBarUtility.WriteProgressBar((row * 100) / users.Count, true);
+                ProgressBarUtility.WriteProgressBar((userCtr * 100) / users.Count, true);
             }
 
 
@@ -131,14 +130,12 @@ namespace CallAugger.Controllers.Generators
             worksheet = AddAverageLineupMetrics(users, worksheet, row, rankCount);
 
 
+            // format the worksheet
+            worksheet = FormatWorksheet(worksheet, row, rankCount);
 
             // finish the progress bar
             ProgressBarUtility.WriteProgressBar(100, true);
-            Console.WriteLine("\n");
-            worksheet = FormatWorksheet(worksheet, row, rankCount);
-
-            
-
+            Console.WriteLine(" Done!");
             return worksheet;
         }
 
@@ -496,7 +493,14 @@ namespace CallAugger.Controllers.Generators
             avgUser.Name = "-- AVERAGE --";
             
             // get the average metrics
-            int userCount = 0;
+            int userCount = users.Count;
+
+            if (userCount == 0)
+            {
+                Console.WriteLine("No users found");
+
+                return avgUser;
+            }
 
             int totalCalls = 0;
             int weekendCalls = 0;

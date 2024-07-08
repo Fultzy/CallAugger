@@ -26,7 +26,7 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>2</ApplicationRevision>
+    <ApplicationRevision>3</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -67,13 +67,6 @@
     <ApplicationIcon>Augie-Doggie-and-Doggie-Daddy-298x300 %281%29.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.dll</HintPath>
-    </Reference>
-    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.SqlServer.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.AspNet.Scaffolding.EntityFramework.12.0, Version=17.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Office.Interop.Excel.15.0.4795.1001\lib\net20\Microsoft.Office.Interop.Excel.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -110,6 +103,7 @@
       <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.5.2\lib\netstandard2.0\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
     </Reference>
     <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -127,11 +121,22 @@
     <Compile Include="Controllers\Generators\Worksheets\SupportRepListingWorksheet.cs" />
     <Compile Include="Controllers\Generators\Worksheets\UnassignedPhoneNumberWorksheet.cs" />
     <Compile Include="Controllers\Parsers\Parce.cs" />
-    <Compile Include="Controllers\Parsers\ParceCallRecordData.cs" />
-    <Compile Include="Controllers\Parsers\ParcePharmacyData.cs" />
     <Compile Include="Controllers\DataImporters\CallRecordDataImporter.cs" />
     <Compile Include="Controllers\DataImporters\PharmacyDataImporter.cs" />
     <Compile Include="Controllers\Readers\ExcelReader.cs" />
+    <Compile Include="Controllers\Generators\CsvGenerator.cs" />
+    <Compile Include="Controllers\Readers\CsvReader.cs" />
+    <Compile Include="Controllers\Readers\HeaderHandler.cs" />
+    <Compile Include="Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.Designer.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Utilities\CliInterface\Menues\ErrorMenu.cs" />
+    <Compile Include="Utilities\CliInterface\Menues\MenuMethods.cs" />
+    <Compile Include="Utilities\Debugging.cs" />
+    <Compile Include="Utilities\CliInterface\Menues\HelpMenus.cs" />
     <Compile Include="Models\CallRecord.cs" />
     <Compile Include="Models\Pharmacy.cs" />
     <Compile Include="Models\PhoneNumber.cs" />
@@ -142,11 +147,17 @@
     <Compile Include="Settings\AppSettings.cs" />
     <Compile Include="Utilities\CliInterface\CliMenu.cs" />
     <Compile Include="Utilities\CliInterface\ProgressBar.cs" />
-    <Compile Include="Utilities\CliInterface\SearchUtility.cs" />
+    <Compile Include="Utilities\Formatter.cs" />
+    <Compile Include="Utilities\SearchUtility.cs" />
     <Compile Include="Utilities\Logs\Logger.cs" />
+    <Compile Include="Utilities\Sqlite\Repos\CallRecordRepository.cs" />
+    <Compile Include="Utilities\Sqlite\Repos\PharmacyRepository.cs" />
+    <Compile Include="Utilities\Sqlite\Repos\PhoneNumberRepository.cs" />
+    <Compile Include="Utilities\Sqlite\Repos\UserRepository.cs" />
     <Compile Include="Utilities\Sqlite\QueryStore.cs" />
     <Compile Include="Utilities\Sqlite\SqliteHandler.cs" />
     <Compile Include="Utilities\Validators\DateValidator.cs" />
+    <Compile Include="Utilities\Validators\HeaderValidator.cs" />
     <Compile Include="Utilities\Validators\PhoneNumberValidator.cs" />
     <Compile Include="Utilities\Validators\PharmacyValidator.cs" />
   </ItemGroup>
@@ -157,7 +168,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Augie-Doggie-and-Doggie-Daddy-298x300 %281%29.ico" />
-    <Content Include="Utilities\AreaCodes.txt" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.8">

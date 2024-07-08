@@ -1,66 +1,54 @@
-﻿using CallAugger.Utilities.DataBase;
+﻿using CallAugger.Utilities.Sqlite;
+using CallAugger.Utilities;
 using System;
 using System.Collections.Generic;
+using CallAugger.Utilities.CliInterface;
 
-
-namespace CallAugger.Controllers.DataImporters
+namespace CallAugger.DataImporters
 {
     public class DataImporter
     {
         ///////////////////////////////////////////////////////////////
-        // This class to help direct the CallRecord and Pharmacy object
-        // creation process. It is responsible for passing data to some
-        // Excel Readers and passing it to the appropriate object creation
-        // class. It is not responsible for processing the data otherwise.
+        // This class is responsible for reading in call record and
+        // pharmacy data from a file and creating a list of CallRecord objects.
+
+        public SQLiteHandler dbHandle;
 
 
-        // Turn a file path into a list of CallRecords
-        public List<CallRecord> ImportCallData(string path)
+        public List<CallRecord> ImportCallData()
         {
-            var startTime = DateTime.Now;
             var ICallImporter = new CallRecordDataImporter();
             List<CallRecord> callRecords = null;
 
             // Open Files and return the Data inside of it
-            List<List<string>> data = ICallImporter.ReadInCallRecordData(path);
+            List<List<string>> data = ICallImporter.ReadInCallRecordData();
 
             if (data != null)
             {
-                // Create CallRecords from the data above
-                callRecords = ICallImporter.CreateCallRecords(data);
-
-                // write how long it took to complete these tasks
-                var endTime = DateTime.Now;
-                var timeSpan = endTime - startTime;
-                Console.WriteLine($" ~ Took {Math.Round(timeSpan.TotalMinutes, 2)} minutes\n");
+                // Try to insert these CallRecords into the database
+                callRecords = ICallImporter.ImportCallData(data, dbHandle);
             }
 
+            ICallImporter = null;
             return callRecords;
         }
 
 
-        // Turn a file path into a list of Pharmcaies
-        public List<Pharmacy> ImportPharmacyData(string path)
+        public List<Pharmacy> ImportPharmacyData()
         {
-            var startTime = DateTime.Now;
             var IPharmImporter = new PharmacyDataImporter();
             List<Pharmacy> pharmacies = null;
 
             // Open Files and return the Data inside of it
-            List<List<string>> data = IPharmImporter.ReadInPharmacyData(path);
+            List<List<string>> data = IPharmImporter.ReadInPharmacyData();
 
             if (data != null)
             {
-                // Create Pharmacies from the data above
-                pharmacies = IPharmImporter.CreatePharmacyRecords(data);
-                
-                // write how long it took to complete these tasks
-                var endTime = DateTime.Now;
-                var timeSpan = endTime - startTime;
-                Console.WriteLine($" ~ Took {Math.Round(timeSpan.TotalMinutes, 2)} minutes\n");
+                // Try to insert these pharmacies into the database
+                pharmacies = IPharmImporter.ImportPharmacyData(data, dbHandle);
             }
 
-
+            IPharmImporter = null;
             return pharmacies;
         }
     }

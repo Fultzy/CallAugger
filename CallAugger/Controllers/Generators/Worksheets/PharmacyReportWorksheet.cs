@@ -1,15 +1,13 @@
 ﻿using CallAugger.Utilities;
-using CallAugger.Utilities.DataBase;
+using CallAugger.Utilities.Sqlite;
 using Microsoft.Office.Interop.Excel;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace CallAugger.Controllers.Generators
+
+namespace CallAugger.Generators.Worksheets
 {
     internal class PharmacyReportWorksheet
     {
@@ -67,12 +65,12 @@ namespace CallAugger.Controllers.Generators
                 {
                     worksheet.Cells[row, 6] = "Total:";
                     worksheet.Cells[row, 7] = pharmacy.TotalCalls;
-                    worksheet.Cells[row, 8] = pharmacy.FormatedDuration(pharmacy.TotalDuration);
-                    worksheet.Cells[row, 9] = pharmacy.FormatedDuration(Convert.ToInt32(pharmacy.AverageDuration()));
+                    worksheet.Cells[row, 8] = pharmacy.FormattedTotalDuration();
+                    worksheet.Cells[row, 9] = pharmacy.FormattedAverageDuration();
                     worksheet.Cells[row, 10] = pharmacy.InboundCalls;
-                    worksheet.Cells[row, 11] = pharmacy.FormatedDuration(pharmacy.InboundDuration);
+                    worksheet.Cells[row, 11] = pharmacy.FormattedInboundDuration();
                     worksheet.Cells[row, 12] = pharmacy.OutboundCalls;
-                    worksheet.Cells[row, 13] = pharmacy.FormatedDuration(pharmacy.OutboundDuration);
+                    worksheet.Cells[row, 13] = pharmacy.FormattedOutboundDuration();
                 }
 
                 worksheet.Cells[row, 14] = pharmacy.Anniversary;
@@ -86,20 +84,19 @@ namespace CallAugger.Controllers.Generators
 
                 foreach (PhoneNumber phoneNumber in pharmacy.PhoneNumbers.OrderByDescending(ph => ph.TotalDuration))
                 {
-                    
                     if (phoneNumber.Number == null) continue;
 
                     // add the Phone number Details to the worksheet
-                    worksheet.Cells[row, 6] = phoneNumber.FormatedPhoneNumber();
+                    worksheet.Cells[row, 6] = phoneNumber.FormattedPhoneNumber();
                     worksheet.Cells[row, 7] = phoneNumber.TotalCalls;
-                    worksheet.Cells[row, 8] = phoneNumber.FormatedDuration(phoneNumber.TotalDuration);
-                    worksheet.Cells[row, 9] = phoneNumber.FormatedDuration(Convert.ToInt32(phoneNumber.AverageDuration()));
+                    worksheet.Cells[row, 8] = phoneNumber.FormattedTotalDuration();
+                    worksheet.Cells[row, 9] = phoneNumber.FormattedAverageDuration();
 
                     worksheet.Cells[row, 10] = phoneNumber.InboundCalls;
-                    worksheet.Cells[row, 11] = phoneNumber.FormatedDuration(phoneNumber.InboundDuration);
+                    worksheet.Cells[row, 11] = phoneNumber.FormattedInboundDuration();
                     
                     worksheet.Cells[row, 12] = phoneNumber.OutboundCalls;
-                    worksheet.Cells[row, 13] = phoneNumber.FormatedDuration(phoneNumber.OutboundDuration);
+                    worksheet.Cells[row, 13] = phoneNumber.FormattedOutboundDuration();
 
                     row++;
                 }
@@ -110,9 +107,11 @@ namespace CallAugger.Controllers.Generators
                 ProgressBarUtility.WriteProgressBar((phs * 100) / pharmacies.Count, true);
             }
 
-            Console.WriteLine("\n");
             worksheet = FormatWorksheet(worksheet, row);
 
+            // finish progress bar
+            ProgressBarUtility.WriteProgressBar(100, true);
+            Console.WriteLine(" Done!");
             return worksheet;
         }
 

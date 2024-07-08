@@ -1,12 +1,16 @@
-﻿using System;
+﻿using CallAugger.Utilities;
+using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
+using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace CallAugger
 {
     public class Pharmacy
     {
 
-        public int id { get; set; }
+        public int id = 0;
         public string Name { get; set; }
         public string Npi { get; set; }
         public string Dea { get; set; }
@@ -19,9 +23,10 @@ namespace CallAugger
         public string ContactName2 { get; set; }
         public string Anniversary { get; set; }
         public string PrimaryPhoneNumber { get; set; }
+        public string FaxNumber { get; set; }
 
-        // The Frist phone number in this is should always be the primary phone number. 
         public List<PhoneNumber> PhoneNumbers = new List<PhoneNumber>();
+
         public int TotalCalls = 0;
         public int TotalDuration = 0;
         
@@ -31,16 +36,14 @@ namespace CallAugger
         public int OutboundCalls = 0;
         public int OutboundDuration = 0;
 
-        // writes out all the info for the pharmacy to the console
-        // if true is passed to this method, it will also write out the stats for each phone number
         public void WritePharmacyInfo(int callRecordCount = 0)
         {
             string pad = "     ";
-
-
+            
             // write out all the info for the pharmacy to the console
-            Console.WriteLine(pad + "\n  ~~~~~~~~~~ " + Name.Trim() + " ~~~~~~~~~~\n");
-                                   
+            Console.WriteLine(pad + "\n  ~~~~~~~~~~ " + Name.Trim() + " ~~~~~~~~~~");
+            Console.WriteLine("id: " + id);
+
             // write Pharmacy Medical Creds
             Console.WriteLine(pad + "        Npi        Ncpdp        Dea");
             Console.WriteLine(pad + "    " + Npi + " || " + Ncpdp + " || " + Dea);
@@ -49,22 +52,22 @@ namespace CallAugger
             Console.WriteLine(pad + "    Anniversary: {0}\n", Anniversary);
 
             // write Pharmacy Contact Info
-            if (ContactName2 == null) Console.WriteLine(pad + "  Contact: {0}", ContactName1);
-            else Console.WriteLine(pad + "  Contact(s): {0} {1}", ContactName1, ContactName2);
+            if (ContactName2 == "null") 
+                Console.WriteLine(pad + "  Contact: {0}\n", ContactName1);
+            else 
+                Console.WriteLine(pad + "  Contact(s): {0}, {1}\n", ContactName1, ContactName2);
 
-
-            Console.WriteLine(pad + "  Main Phone: {0}\n", FormatedPhoneNumber(PrimaryPhoneNumber));
 
             if (PhoneNumbers.Count > 1)
             {
                 // write phrmacy Total call states
-                Console.WriteLine(pad + "   Total Calls : " + TotalCalls  +   "     Total Duration : " + FormatedDuration(TotalDuration));
-                Console.WriteLine(pad + " Inbound Calls : " + InboundCalls  + "   Inbound Duration : " + FormatedDuration(InboundDuration));
-                Console.WriteLine(pad + "Outbound Calls : " + OutboundCalls + "  Outbound Duration : " + FormatedDuration(OutboundDuration));
+                Console.WriteLine(pad + "   Total Calls : " + TotalCalls  +   "     Total Duration : " + FormattedTotalDuration());
+                Console.WriteLine(pad + " Inbound Calls : " + InboundCalls  + "   Inbound Duration : " + FormattedInboundDuration());
+                Console.WriteLine(pad + "Outbound Calls : " + OutboundCalls + "  Outbound Duration : " + FormattedOutboundDuration());
             }
 
 
-            foreach (PhoneNumber phoneNumber in PhoneNumbers) 
+            foreach (PhoneNumber phoneNumber in PhoneNumbers.OrderByDescending(pn => pn.TotalDuration)) 
             {
                 phoneNumber.WriteCallerStats(callRecordCount);
             }
@@ -90,7 +93,40 @@ namespace CallAugger
                 callPadding += " ";
             }
 
-            return $"{Name}{namePadding} ~ {FormatedPhoneNumber(PrimaryPhoneNumber)} ~ {Npi} ~   {callPadding}{TotalCalls}   ~  {FormatedDuration(TotalDuration)}";
+            return $"{Name}{namePadding} ~ {FormattedPhoneNumber(PrimaryPhoneNumber)} ~ {Npi} ~   {callPadding}{TotalCalls}   ~  {FormattedTotalDuration()}";
+        }
+
+        public string InlineDetails()
+        {
+
+            return $"{Name} ID:{id} PrimaryPhone:{PrimaryPhoneNumber} Npi:{Npi} Ncpdp:{Ncpdp} Dea:{Dea} Address:{Address} City:{City} State:{State} ZipCode:{Zip} Contact1:{ContactName1} Contact2:{ContactName2} Anniversary:{Anniversary} Fax:{FaxNumber}";
+        }
+
+        public string ToCsv()
+        {
+            var name = Name;
+            if (Name.Contains(",")) name = Name.Replace(",", " ");
+
+            return $"{name},{Npi},{Dea},{Ncpdp},{Address},{City},{State},{Zip},{ContactName1},{ContactName2},{Anniversary},{PrimaryPhoneNumber},{FaxNumber}";
+        }
+
+        public Pharmacy FromCsv(string[] row)
+        {
+            Name = row[0];
+            Npi = row[1];
+            Dea = row[2];
+            Ncpdp = row[3];
+            Address = row[4];
+            City = row[5];
+            State = row[6];
+            Zip = row[7];
+            ContactName1 = row[8];
+            ContactName2 = row[9];
+            Anniversary = row[10];
+            PrimaryPhoneNumber = row[11];
+            FaxNumber = row[12];
+
+            return this;
         }
 
         public void AddPhoneNumber(PhoneNumber newPhoneNumber)
@@ -98,11 +134,7 @@ namespace CallAugger
             // if the phone number already exists in the list replace it with the new phone number
             var foundPhoneNumber = PhoneNumbers.Find(pn => pn.Number == newPhoneNumber.Number);
             
-            if (foundPhoneNumber != null)
-            {
-                // what is this for?!?!?!
-            }
-            else // add the new phone number to the list of phone numbers
+            if (foundPhoneNumber == null)
             {
                 TotalCalls += newPhoneNumber.TotalCalls;
                 TotalDuration += newPhoneNumber.TotalDuration;
@@ -123,25 +155,29 @@ namespace CallAugger
             }
         }
 
-
-        public string FormatedPhoneNumber(string number)
+        public string FormattedPhoneNumber(string number)
         {
-            string formattedNumber = number;
-            if (number.Length == 10)
-            {
-                formattedNumber = "(" + number.Substring(0, 3) + ") " + number.Substring(3, 3) + "-" + number.Substring(6, 4);
-            }
-
-            return formattedNumber;
+            return Formatter.PhoneNumber(number);
+        }
+        
+        public string FormattedTotalDuration()
+        {
+            return Formatter.Duration(TotalDuration);
         }
 
-        public string FormatedDuration(int duration)
+        public string FormattedInboundDuration()
         {
-            TimeSpan time = TimeSpan.FromSeconds(duration);
-            if (time.Hours == 0)
-                return $"{time.Minutes}m {time.Seconds}s";
-            else
-                return $"{time.Hours + (time.Days * 24)}h {time.Minutes}m {time.Seconds}s";
+            return Formatter.Duration(InboundDuration);
+        }
+
+        public string FormattedOutboundDuration()
+        {
+            return Formatter.Duration(OutboundDuration);
+        }
+
+        public string FormattedAverageDuration()
+        {
+            return Formatter.Duration(Convert.ToInt32(AverageDuration()));
         }
 
         public float AverageDuration()

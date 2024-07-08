@@ -4,11 +4,20 @@
 namespace CallAugger.Utilities
 {
 
-    internal class PharmacyValidator
+    static class PharmacyValidator
     {
-        public static readonly PharmacyValidator Instance = new PharmacyValidator();
 
-        public string IsZip(string input)
+        public static string IsName(string input)
+        {
+            string pattern = @"^[a-zA-Z\d\s&#!()]{1,50}$";
+
+            if (Regex.IsMatch(input, pattern))
+                return "Input is valid.";
+            else
+                return "Input must be more than one character.";
+        }
+
+        public static string IsZip(string input)
         {
             string pattern = @"^\d{5}$";
 
@@ -18,7 +27,7 @@ namespace CallAugger.Utilities
                 return "Input must contain exactly 5 digits.";
         }
 
-        public string IsNpi(string input)
+        public static string IsNpi(string input)
         {
             string pattern = @"^\d{10}$";
 
@@ -28,7 +37,7 @@ namespace CallAugger.Utilities
                 return "Input must contain exactly 10 digits.";
         }
 
-        public string IsNcpdp(string input)
+        public static string IsNcpdp(string input)
         {
             string pattern = @"^\d{7}$";
 
@@ -38,7 +47,7 @@ namespace CallAugger.Utilities
                 return "Input must contain exactly 7 digits.";
         }
 
-        public string IsDea(string input)
+        public static string IsDea(string input)
         {
             string pattern = @"^[a-zA-Z\d]{9}$";
 
@@ -48,7 +57,7 @@ namespace CallAugger.Utilities
                 return "Input must contain letters and digits only and must be 9 characters in length.";
         }
         
-        public string IsPharmacyNameValid(string input)
+        public static string IsPharmacyNameValid(string input)
         {
             string pattern = @"^[a-zA-Z\d\s]{1,50}$";
 

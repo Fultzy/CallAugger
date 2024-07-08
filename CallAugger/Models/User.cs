@@ -1,16 +1,12 @@
-﻿using Microsoft.Office.Interop.Word;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CallAugger
 {
     public class User
     {
-        public int id { get; set; }
+        public int id = 0;
         public string Name { get; set; }
         public string Extention { get; set; }
 
@@ -192,9 +188,19 @@ namespace CallAugger
             }
         }
 
-        public string InlineUserInfo()
+        public string InlineStats()
         {
             return $"{Name} - Total Calls: {TotalCalls} - Total Duration: {FormatedDuration(TotalDuration)}";
+        }
+
+        internal object InlineDetails()
+        {
+            return $"{Name} ID:{id} Extention:{Extention}";
+        }
+
+        public string ToCsv()
+        {
+            return $"{Name},{Extention}";
         }
 
         public string NameL()

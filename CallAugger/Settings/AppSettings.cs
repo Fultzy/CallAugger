@@ -1,11 +1,7 @@
-﻿using CallAugger.Controllers.Generators.Add_ons;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CallAugger.Settings
 {
@@ -15,22 +11,35 @@ namespace CallAugger.Settings
         {
             // set the console window size
             Console.SetWindowSize(120, 45);
+            Console.WriteLine("Loading Program:");
 
-            var settings = LoadSettings();
+            var loadedSettings = LoadSettings();
 
-            // set the app settings
-            ConfigurationManager.AppSettings["default_dateRange"] = settings["default_dateRange"];
+            ConfigurationManager.AppSettings["program_version"] = "v1.5";
 
-            ConfigurationManager.AppSettings["header_color"] = settings["header_color"];
-            ConfigurationManager.AppSettings["item_accent_color"] = settings["item_accent_color"];
-            ConfigurationManager.AppSettings["mini_header_color"] = settings["mini_header_color"];
-            ConfigurationManager.AppSettings["alternating_row_color1"] = settings["alternating_row_color1"];
-            ConfigurationManager.AppSettings["alternating_row_color2"] = settings["alternating_row_color2"];
+            // Basic Settings
+            ConfigurationManager.AppSettings["db_path"] = Directory.GetCurrentDirectory() + @"\Data\Auggered.db";
+            ConfigurationManager.AppSettings["default_dateRange"] = loadedSettings["default_dateRange"];
+            ConfigurationManager.AppSettings["ignore_users"] = loadedSettings["ignore_users"];
 
-            ConfigurationManager.AppSettings["weekGraph_pharmacies"] = settings["weekGraph_pharmacies"];
-            ConfigurationManager.AppSettings["monthGraph_pharmacies"] = settings["monthGraph_pharmacies"];
+            // Report Settings
+            ConfigurationManager.AppSettings["header_color"] = loadedSettings["header_color"];
+            ConfigurationManager.AppSettings["item_accent_color"] = loadedSettings["item_accent_color"];
+            ConfigurationManager.AppSettings["mini_header_color"] = loadedSettings["mini_header_color"];
+            ConfigurationManager.AppSettings["alternating_row_color1"] = loadedSettings["alternating_row_color1"];
+            ConfigurationManager.AppSettings["alternating_row_color2"] = loadedSettings["alternating_row_color2"];
 
-            ConfigurationManager.AppSettings["ignore_users"] = settings["ignore_users"];
+            // Report Add-ons
+            ConfigurationManager.AppSettings["weekGraph_pharmacies"] = loadedSettings["weekGraph_pharmacies"];
+            ConfigurationManager.AppSettings["monthGraph_pharmacies"] = loadedSettings["monthGraph_pharmacies"];
+
+
+            // DEBUGGING
+            ConfigurationManager.AppSettings["time_to_access"] = loadedSettings["time_to_access"];
+
+            ConfigurationManager.AppSettings["allow_db_clear"] = loadedSettings["allow_db_clear"];
+            ConfigurationManager.AppSettings["allow_db_rebuild"] = loadedSettings["allow_db_rebuild"];
+            ConfigurationManager.AppSettings["allow_simulation"] = loadedSettings["allow_simulation"];
         }
 
 

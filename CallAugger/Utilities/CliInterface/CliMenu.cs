@@ -1,7 +1,7 @@
 ﻿using CallAugger.Settings;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
+using System.Configuration;
 
 namespace CallAugger.Utilities
 {
@@ -19,7 +19,7 @@ namespace CallAugger.Utilities
         // Write Methods
         public string WriteMenu()
         {
-            WriteTitle();
+            WriteMenuName();
             WriteOptions();
             WriteExit();
             WritePrompt();
@@ -31,22 +31,47 @@ namespace CallAugger.Utilities
 
             return input;
         }
-        
-        public void WriteProgramTitle()
-        {
-            Console.Clear();
 
-            Console.WriteLine( @" ______   ______   __       __           ______   __  __   ______   ______   ______   ______    " );
-            Console.WriteLine( @"/\  ___\ /\  __ \ /\ \     /\ \         /\  __ \ /\ \/\ \ /\  ___\ /\  ___\ /\  ___\ /\  == \   " );
-            Console.WriteLine( @"\ \ \____\ \  __ \\ \ \____\ \ \____    \ \  __ \\ \ \_\ \\ \ \__ \\ \ \__ \\ \  __\ \ \  __<   " );
-            Console.WriteLine( @" \ \_____\\ \_\ \_\\ \_____\\ \_____\    \ \_\ \_\\ \_____\\ \_____\\ \_____\\ \_____\\ \_\ \_\ " );
-            Console.WriteLine( @"  \/_____/ \/_/\/_/ \/_____/ \/_____/     \/_/\/_/ \/_____/ \/_____/ \/_____/ \/_____/ \/_/ /_/ " );
-            Console.WriteLine( "                                                      Built for BestRx     By Fultzy     V 1.0 " );
-            DateRange dateRange = new DateRange();
-            dateRange.Write();
+        public string WriteHorizontalMenu()
+        {
+            WriteHorizontalOptions(4);
+            WritePrompt();
+
+            string input = Console.ReadLine();
+
+            if (Exit == "Close Program" && input.ToLower() == "exit")
+                Environment.Exit(0);
+
+            return input;
         }
         
-        public void WriteTitle()
+        public void AnyKey(int PaddingRequest = 0)
+        {
+            string padding = " ";
+            for (int i = 0; i < PaddingRequest; i++)
+            {
+                padding += " ";
+            }
+
+            Console.Write($"\n{padding}Press Any Key To Continue...");
+            Console.ReadKey();
+            Console.WriteLine();
+        }
+
+        public bool ExcapeWait()
+        {
+            ConsoleKeyInfo keyInfo = Console.ReadKey();
+            if (keyInfo.Key == ConsoleKey.Escape)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public void WriteMenuName()
         {
             if (MenuName != null)
             {
@@ -76,6 +101,48 @@ namespace CallAugger.Utilities
                 string message = Searching == false ? "No Options Available": "No Search Results Found";
                 Console.WriteLine(OPadding() + message);
             }
+        }
+
+        public void WriteHorizontalOptions(int columnCount)
+        {
+            if (Options.Count > 0 && Options[0] != null)
+            {
+                string headerMessage = Searching == false ? "" : Header;
+
+                if (headerMessage.Length > 0) Console.WriteLine(OPadding() + Header);
+
+                for (int i = 0; i < Options.Count; i++)
+                {
+                    string padding = i > 8 ? OPadding(1) : OPadding();
+
+                    if (Options[i] != null)
+                    {
+                        if (i % columnCount == 0)
+                        {
+                            Console.Write("\n " + (i + 1) + ": " + Options[i]);
+                        }
+                        else
+                        {
+                            Console.Write("  " + (i + 1) + ": " + Options[i]);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                string message = Searching == false ? "No Options Available" : "No Search Results Found";
+                Console.WriteLine(OPadding() + message);
+            }
+
+            Console.WriteLine();
+
+            if (Help != null)
+            {
+                Console.WriteLine("\n help: " + Help);
+            }
+
+            Console.WriteLine(" exit: " + Exit);
+            Console.Write("\n");
         }
 
         public void WritePrompt()
@@ -114,7 +181,41 @@ namespace CallAugger.Utilities
             else
                 return ConfirmationPrompt(prompt);
         }
-        
+
+        public void WriteProgramTitle()
+        {
+            Console.Clear();
+
+            Console.WriteLine(@" ______   ______   __       __           ______   __  __   ______   ______   ______   ______    ");
+            Console.WriteLine(@"/\  ___\ /\  __ \ /\ \     /\ \         /\  __ \ /\ \/\ \ /\  ___\ /\  ___\ /\  ___\ /\  == \   ");
+            Console.WriteLine(@"\ \ \____\ \  __ \\ \ \____\ \ \____    \ \  __ \\ \ \_\ \\ \ \__ \\ \ \__ \\ \  __\ \ \  __<   ");
+            Console.WriteLine(@" \ \_____\\ \_\ \_\\ \_____\\ \_____\    \ \_\ \_\\ \_____\\ \_____\\ \_____\\ \_____\\ \_\ \_\ ");
+            Console.WriteLine(@"  \/_____/ \/_/\/_/ \/_____/ \/_____/     \/_/\/_/ \/_____/ \/_____/ \/_____/ \/_____/ \/_/ /_/ ");
+            Console.WriteLine("");
+            DateRange dateRange = new DateRange();
+            dateRange.Write();
+        }
+
+        public void WriteMainProgramTitle()
+        {
+            Console.Clear();
+
+            Console.WriteLine(@" ______   ______   __       __           ______   __  __   ______   ______   ______   ______    ");
+            Console.WriteLine(@"/\  ___\ /\  __ \ /\ \     /\ \         /\  __ \ /\ \/\ \ /\  ___\ /\  ___\ /\  ___\ /\  == \   ");
+            Console.WriteLine(@"\ \ \____\ \  __ \\ \ \____\ \ \____    \ \  __ \\ \ \_\ \\ \ \__ \\ \ \__ \\ \  __\ \ \  __<   ");
+            Console.WriteLine(@" \ \_____\\ \_\ \_\\ \_____\\ \_____\    \ \_\ \_\\ \_____\\ \_____\\ \_____\\ \_____\\ \_\ \_\ ");
+            Console.WriteLine(@"  \/_____/ \/_/\/_/ \/_____/ \/_____/     \/_/\/_/ \/_____/ \/_____/ \/_____/ \/_____/ \/_/ /_/ ");
+            Console.WriteLine($"                                                      Built for BestRx     By Fultzy     {ConfigurationManager.AppSettings["program_version"]} ");
+
+            DateRange dateRange = new DateRange();
+            dateRange.Write();
+        }
+
+        public void WriteMessage(string message)
+        {
+            Console.WriteLine(OPadding() + message);
+        }
+
 
         // Formatting Helper Methods
         private string OPadding(int additional = 0)
@@ -133,8 +234,7 @@ namespace CallAugger.Utilities
         // input Case and validation methods
         public int CaseOptionNumber(string input)
         {
-            int optionNumber;
-            if (!int.TryParse(input, out optionNumber) || optionNumber < 1 || optionNumber > Options.Count)
+            if (!int.TryParse(input, out int optionNumber) || optionNumber < 1 || optionNumber > Options.Count)
                 return 0;
 
             return optionNumber;
@@ -143,6 +243,12 @@ namespace CallAugger.Utilities
         public bool IsValidOption(string input)
         {
             return CaseOptionNumber(input) > 0;
+        }
+
+        internal string StringPrompt(string prompt)
+        {
+            Console.Write(OPadding() + prompt);
+            return Console.ReadLine();
         }
 
 
@@ -179,5 +285,6 @@ namespace CallAugger.Utilities
                 return optionNumber;
             }
         }
+
     }
 }
